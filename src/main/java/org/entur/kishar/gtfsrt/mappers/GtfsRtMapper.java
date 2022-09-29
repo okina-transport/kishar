@@ -1,8 +1,9 @@
 package org.entur.kishar.gtfsrt.mappers;
 
 import com.google.protobuf.Timestamp;
-import com.google.protobuf.util.Timestamps;
+
 import com.google.transit.realtime.GtfsRealtime;
+import com.google.protobuf.util.Timestamps;
 import uk.org.siri.www.siri.*;
 import uk.org.siri.www.siri.FramedVehicleJourneyRefStructure;
 import uk.org.siri.www.siri.LocationStructure;
@@ -14,6 +15,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
+
 
 public class GtfsRtMapper {
 

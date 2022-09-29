@@ -18,7 +18,6 @@ import java.util.UUID;
 
 import static org.entur.kishar.routes.helpers.MqttHelper.buildTopic;
 
-
 @Service
 @Configuration
 public class PubSubRoute extends RouteBuilder {

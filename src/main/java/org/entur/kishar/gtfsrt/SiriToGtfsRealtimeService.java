@@ -15,10 +15,11 @@
 package org.entur.kishar.gtfsrt;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
+
+import com.google.common.collect.Maps;
 import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime.*;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
