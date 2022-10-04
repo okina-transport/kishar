@@ -37,6 +37,9 @@ public class PubSubRoute extends RouteBuilder {
     @Value("${kishar.pubsub.topic.sx}")
     private String siriSxTopic;
 
+    @Value("${kishar.pubsub.topic.sm}")
+    private String siriSmTopic;
+
     @Autowired
     private PrometheusMetricsService metrics;
 
@@ -68,6 +71,13 @@ public class PubSubRoute extends RouteBuilder {
                 .wireTap("direct:log.incoming.data")
                 .to("direct:parse.siri.to.gtfs.rt.alerts")
                 .to("direct:register.gtfs.rt.alerts")
+            ;
+
+            from(siriSmTopic)
+                    .setHeader("type", simple("SIRI_SM"))
+                    .wireTap("direct:log.incoming.data")
+                    .to("direct:parse.siri.to.gtfs.rt.stop.monitoring")
+                    .to("direct:register.gtfs.rt.trip.updates")
             ;
 
             from ("direct:parse.siri.to.gtfs.rt.trip.updates")
@@ -112,6 +122,17 @@ public class PubSubRoute extends RouteBuilder {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
                         Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSxToGtfsRt(siri);
+                        p.getOut().setBody(body);
+                        p.getOut().setHeaders(p.getIn().getHeaders());
+                    })
+            ;
+
+
+            from ("direct:parse.siri.to.gtfs.rt.stop.monitoring")
+                    .process( p -> {
+                        final byte[] data = (byte[]) p.getIn().getBody();
+                        final SiriType siri = SiriType.parseFrom(data);
+                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSmToGtfsRt(siri);
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })

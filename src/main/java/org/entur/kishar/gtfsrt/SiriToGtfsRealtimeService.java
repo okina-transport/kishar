@@ -35,7 +35,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.www.siri.*;
 
-import java.io.IOException;
 import java.util.*;
 
 import static org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary.createFeedMessageBuilder;
@@ -216,8 +215,8 @@ public class SiriToGtfsRealtimeService {
         Preconditions.checkNotNull(situation.getSituationNumber().getValue());
 
         Preconditions.checkState(
-            !situation.getProgress().equals(WorkflowStatusEnumeration.WORKFLOW_STATUS_ENUMERATION_CLOSED),
-            "Ignore message with Progress=closed"
+                !situation.getProgress().equals(WorkflowStatusEnumeration.WORKFLOW_STATUS_ENUMERATION_CLOSED),
+                "Ignore message with Progress=closed"
         );
 
         Preconditions.checkNotNull(situation.getParticipantRef(), "datasource");
@@ -237,9 +236,9 @@ public class SiriToGtfsRealtimeService {
     }
 
     private void checkPreconditions(FramedVehicleJourneyRefStructure fvjRef) {
-        Preconditions.checkState(fvjRef.hasDataFrameRef(),"DataFrameRef");
-        Preconditions.checkNotNull(fvjRef.getDataFrameRef().getValue(),"DataFrameRef");
-        Preconditions.checkNotNull(fvjRef.getDatedVehicleJourneyRef(),"DatedVehicleJourneyRef");
+        Preconditions.checkState(fvjRef.hasDataFrameRef(), "DataFrameRef");
+        Preconditions.checkNotNull(fvjRef.getDataFrameRef().getValue(), "DataFrameRef");
+        Preconditions.checkNotNull(fvjRef.getDatedVehicleJourneyRef(), "DatedVehicleJourneyRef");
     }
 
     private TripAndVehicleKey getKey(VehicleActivityStructure vehicleActivity) {
@@ -269,7 +268,7 @@ public class SiriToGtfsRealtimeService {
             prometheusMetricsService.registerTotalGtfsRtEntities(tripUpdates.getEntityCount(), vehiclePositions.getEntityCount(), alerts.getEntityCount());
         }
         LOG.info("Wrote output in {} ms: {} alerts, {} vehicle-positions, {} trip-updates",
-                (System.currentTimeMillis()-t1),
+                (System.currentTimeMillis() - t1),
                 alerts.getEntityCount(),
                 vehiclePositions.getEntityCount(),
                 tripUpdates.getEntityCount());
@@ -319,6 +318,20 @@ public class SiriToGtfsRealtimeService {
 
     private String getTripIdForEstimatedVehicleJourney(EstimatedVehicleJourneyStructure mvj) {
         StringBuilder b = new StringBuilder();
+        FramedVehicleJourneyRefStructure fvjRef = mvj.getFramedVehicleJourneyRef();
+        b.append((fvjRef.getDatedVehicleJourneyRef()));
+        b.append('-');
+        b.append(fvjRef.getDataFrameRef().getValue());
+        if (mvj.hasVehicleRef() && mvj.getVehicleRef().getValue() != null) {
+            b.append('-');
+            b.append(mvj.getVehicleRef().getValue());
+        }
+        return b.toString();
+    }
+
+    private String getTripIdForMonitoredStopVisit(MonitoredStopVisitStructure stopVisit) {
+        StringBuilder b = new StringBuilder();
+        MonitoredVehicleJourneyStructure mvj = stopVisit.getMonitoredVehicleJourney();
         FramedVehicleJourneyRefStructure fvjRef = mvj.getFramedVehicleJourneyRef();
         b.append((fvjRef.getDatedVehicleJourneyRef()));
         b.append('-');
@@ -468,7 +481,7 @@ public class SiriToGtfsRealtimeService {
                             result.put(new CompositeKey(key, activity.getMonitoredVehicleJourney().getDataSource()).asString(),
                                     new GtfsRtData(entity.build().toByteArray(), timeToLive));
                         } catch (Exception e) {
-                            //LOG.debug("Failed parsing vehicle activity", e);
+                            LOG.debug("Failed parsing vehicle activity", e);
                         }
                     }
 
@@ -540,7 +553,7 @@ public class SiriToGtfsRealtimeService {
 
                                         result.put(new CompositeKey(key, estimatedVehicleJourney.getDataSource()).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
                                     } catch (Exception e) {
-                                        //LOG.debug("Failed parsing trip updates", e);
+                                        LOG.debug("Failed parsing trip updates", e);
                                     }
                                 }
                             }
@@ -554,6 +567,80 @@ public class SiriToGtfsRealtimeService {
 
     public void registerGtfsRtTripUpdates(Map<String, GtfsRtData> tripUpdates) {
         redisService.writeGtfsRt(tripUpdates, RedisService.Type.TRIP_UPDATE);
+    }
+
+    public Map<String, GtfsRtData> convertSiriSmToGtfsRt(SiriType siri) {
+
+        Map<String, GtfsRtData> result = Maps.newHashMap();
+
+        if (siri == null) {
+            return result;
+        }
+
+        ServiceDeliveryType serviceDelivery = siri.getServiceDelivery();
+        if (serviceDelivery != null && serviceDelivery.getStopMonitoringDeliveryCount() > 0) {
+
+
+            for (StopMonitoringDeliveryStructure stopMonitoringDeliveryStructure : serviceDelivery.getStopMonitoringDeliveryList()) {
+                if (stopMonitoringDeliveryStructure != null && stopMonitoringDeliveryStructure.getMonitoredStopVisitCount() > 0) {
+                    for (MonitoredStopVisitStructure monitoredStopVisitStructure : stopMonitoringDeliveryStructure.getMonitoredStopVisitList()) {
+
+                        try {
+                            checkPreconditions(monitoredStopVisitStructure);
+                            TripUpdate.Builder builder = gtfsMapper.mapTripUpdateFromStopVisit(monitoredStopVisitStructure);
+
+                            FeedEntity.Builder entity = FeedEntity.newBuilder();
+                            String key = getTripIdForMonitoredStopVisit(monitoredStopVisitStructure);
+                            entity.setId(key);
+
+                            entity.setTripUpdate(builder);
+
+                            Timestamp expirationTime = getExpirationDate(monitoredStopVisitStructure);
+                            Duration timeToLive;
+
+                            if (expirationTime == null) {
+                                timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
+                            } else {
+                                timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), expirationTime);
+                            }
+
+                            result.put(new CompositeKey(key, "MOBIITI").asString(),
+                                    new GtfsRtData(entity.build().toByteArray(), timeToLive));
+                        } catch (Exception e) {
+                            LOG.debug("Failed parsing vehicle activity", e);
+                        }
+                    }
+
+                }
+            }
+        }
+
+        return result;
+    }
+
+
+
+
+    private Timestamp getExpirationDate(MonitoredStopVisitStructure monitoredStopVisitStructure) {
+
+
+        MonitoredCallStructure monitoredCall = monitoredStopVisitStructure.getMonitoredVehicleJourney().getMonitoredCall();
+
+        if (monitoredCall.hasExpectedArrivalTime()) {
+            return monitoredCall.getExpectedArrivalTime();
+        } else if (monitoredCall.hasAimedArrivalTime()) {
+            return monitoredCall.getAimedArrivalTime();
+        } else if (monitoredCall.hasExpectedDepartureTime()) {
+            return monitoredCall.getExpectedDepartureTime();
+        } else if (monitoredCall.hasAimedDepartureTime()) {
+            return monitoredCall.getAimedDepartureTime();
+        }
+        return null;
+    }
+
+    private void checkPreconditions(MonitoredStopVisitStructure monitoredStopVisitStructure) {
+        Preconditions.checkState(monitoredStopVisitStructure.hasMonitoringRef(), "MonitoredRef");
+        Preconditions.checkState(monitoredStopVisitStructure.getMonitoredVehicleJourney().hasFramedVehicleJourneyRef());
     }
 
     public Map<String, GtfsRtData> convertSiriSxToGtfsRt(SiriType siri) {
@@ -593,7 +680,7 @@ public class SiriToGtfsRealtimeService {
 
                                 result.put(new CompositeKey(key, ptSituationElement.getParticipantRef().getValue()).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
                             } catch (Exception e) {
-                                //LOG.debug("Failed parsing alerts", e);
+                                LOG.debug("Failed parsing alerts", e);
                             }
                         }
                     }

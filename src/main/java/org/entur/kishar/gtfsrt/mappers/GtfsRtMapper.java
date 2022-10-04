@@ -45,6 +45,60 @@ public class GtfsRtMapper {
         return tripUpdate;
     }
 
+    public GtfsRealtime.TripUpdate.Builder mapTripUpdateFromStopVisit(MonitoredStopVisitStructure stopVisit) {
+        GtfsRealtime.TripUpdate.Builder tripUpdate = GtfsRealtime.TripUpdate.newBuilder();
+
+        GtfsRealtime.TripDescriptor td = getMonitoredStopVisitAsTripDescriptor(stopVisit);
+        tripUpdate.setTrip(td);
+
+        GtfsRealtime.VehicleDescriptor vd = getMonitoredStopVisitAsVehicleDescriptor(stopVisit);
+        if (vd != null) {
+            tripUpdate.setVehicle(vd);
+        }
+
+        applyStopSpecificDelayToTripUpdateIfApplicable(stopVisit, tripUpdate);
+        return tripUpdate;
+    }
+
+    private GtfsRealtime.VehicleDescriptor getMonitoredStopVisitAsVehicleDescriptor(MonitoredStopVisitStructure stopVisit) {
+
+         if (!stopVisit.hasMonitoredVehicleJourney() && stopVisit.getMonitoredVehicleJourney() != null && stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef() != null ) {
+            return null;
+        }
+
+
+        GtfsRealtime.VehicleDescriptor.Builder vd = GtfsRealtime.VehicleDescriptor.newBuilder();
+        vd.setId(stopVisit.getMonitoredVehicleJourney().getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
+        return vd.build();
+    }
+
+    private GtfsRealtime.TripDescriptor getMonitoredStopVisitAsTripDescriptor(MonitoredStopVisitStructure stopVisit) {
+
+        if (!stopVisit.hasMonitoredVehicleJourney() && stopVisit.getMonitoredVehicleJourney() != null && stopVisit.getMonitoredVehicleJourney().getJourneyPatternRef() != null ) {
+            return null;
+        }
+
+        GtfsRealtime.TripDescriptor.Builder td = GtfsRealtime.TripDescriptor.newBuilder();
+        MonitoredVehicleJourneyStructure fvjRef = stopVisit.getMonitoredVehicleJourney();
+
+
+        td.setTripId(fvjRef.getJourneyPatternRef().getValue());
+
+        if (fvjRef.hasLineRef()) {
+            td.setRouteId(fvjRef.getLineRef().getValue());
+        }
+
+        if (fvjRef.hasOriginAimedDepartureTime()) {
+            final Date date = new Date(getInstant(fvjRef.getOriginAimedDepartureTime()).toEpochMilli());
+            td.setStartDate(gtfsRtDateFormat.format(date));
+            td.setStartTime(gtfsRtTimeFormat.format(date));
+        }
+
+        return td.build();
+    }
+
+
+
     public GtfsRealtime.VehiclePosition.Builder convertSiriToGtfsRt(VehicleActivityStructure activity) {
 
         if (activity == null) {
@@ -232,6 +286,66 @@ public class GtfsRtMapper {
         GtfsRealtime.VehicleDescriptor.Builder vd = GtfsRealtime.VehicleDescriptor.newBuilder();
         vd.setId(vehicleRef.getValue());
         return vd.build();
+    }
+
+    private void applyStopSpecificDelayToTripUpdateIfApplicable(
+            MonitoredStopVisitStructure stopVisit,
+            GtfsRealtime.TripUpdate.Builder tripUpdate) {
+
+        MonitoredVehicleJourneyStructure monitoredVehicleJourney = stopVisit.getMonitoredVehicleJourney();
+        if (monitoredVehicleJourney == null){
+            return;
+        }
+
+        int stopCounter = 0;
+        if (monitoredVehicleJourney.hasMonitoredCall() ) {
+
+            MonitoredCallStructure monitoredCalls = monitoredVehicleJourney.getMonitoredCall();
+                StopPointRefStructure stopPointRef = monitoredCalls.getStopPointRef();
+                if (!monitoredCalls.hasStopPointRef() || stopPointRef.getValue() == null) {
+                    return;
+                }
+                Integer arrivalDelayInSeconds = null;
+                Integer departureDelayInSeconds = null;
+
+                if (monitoredCalls.hasAimedArrivalTime()) {
+                    Timestamp updatedArrivalTime = null;
+                    if (monitoredCalls.hasActualArrivalTime()) {
+                        updatedArrivalTime = monitoredCalls.getActualArrivalTime();
+                    } else if (monitoredCalls.hasExpectedArrivalTime()) {
+                        updatedArrivalTime = monitoredCalls.getExpectedArrivalTime();
+                    }
+                    if (updatedArrivalTime != null) {
+                        arrivalDelayInSeconds = calculateDiff(monitoredCalls.getAimedArrivalTime(), updatedArrivalTime);
+                    }
+                }
+
+                if (monitoredCalls.hasAimedDepartureTime()) {
+
+                    Timestamp updatedDepartureTime = null;
+                    if (monitoredCalls.hasActualDepartureTime()) {
+                        updatedDepartureTime = monitoredCalls.getActualDepartureTime();
+                    } else if (monitoredCalls.hasExpectedDepartureTime()) {
+                        updatedDepartureTime = monitoredCalls.getExpectedDepartureTime();
+                    }
+
+                    if (updatedDepartureTime != null) {
+                        departureDelayInSeconds = calculateDiff(monitoredCalls.getAimedDepartureTime(), updatedDepartureTime);
+                    }
+                }
+
+                int stopSequence;
+                if (monitoredCalls.getOrder() > 0) {
+                    stopSequence = monitoredCalls.getOrder() - 1;
+                } else {
+                    stopSequence = stopCounter;
+                }
+
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate);
+                stopCounter++;
+
+        }
+
     }
 
     private void applyStopSpecificDelayToTripUpdateIfApplicable(

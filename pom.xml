@@ -162,8 +162,8 @@
 
         <dependency>
             <groupId>org.entur</groupId>
-            <artifactId>siri-protobuf</artifactId>
-            <version>0.1</version>
+            <artifactId>siri-protobuf-mapper</artifactId>
+            <version>1.0.0-mobi-iti-SNAPSHOT</version>
         </dependency>
 
         <dependency>
