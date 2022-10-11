@@ -43,5 +43,5 @@ JAR_IMAGE_NAME=registry.okina.fr/mobiiti/kishar:"${VERSION_JAR}"
 #mvn spring-boot:build-image -Dspring-boot.build-image.imageName="${JAR_IMAGE_NAME}" -D${SKIP_TESTS}
 #mvn clean package -D${SKIP_TESTS}
 
-docker build -t "${JAR_IMAGE_NAME}" --build-arg JAR_FILE=target/anshar-${VERSION_JAR}.jar .
+docker build -t "${JAR_IMAGE_NAME}" --build-arg JAR_FILE=target/kishar-${VERSION_JAR}.jar .
 docker push "${JAR_IMAGE_NAME}"
