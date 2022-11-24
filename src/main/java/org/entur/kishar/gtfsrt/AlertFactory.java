@@ -123,6 +123,8 @@ public class AlertFactory {
             switch (ptSituation.getEquipmentReason()) {
                 case EQUIPMENT_REASON_ENUMERATION_CONSTRUCTION_WORK:
                     return Cause.CONSTRUCTION;
+                case EQUIPMENT_REASON_ENUMERATION_TECHNICAL_PROBLEM:
+                    return Cause.TECHNICAL_PROBLEM;
                 case EQUIPMENT_REASON_ENUMERATION_CLOSED_FOR_MAINTENANCE:
                 case EQUIPMENT_REASON_ENUMERATION_MAINTENANCE_WORK:
                 case EQUIPMENT_REASON_ENUMERATION_EMERGENCY_ENGINEERING_WORK:
@@ -147,15 +149,23 @@ public class AlertFactory {
         if (ptSituation.getMiscellaneousReason() != null &&
             ptSituation.getMiscellaneousReasonValue() > 0) {
             switch (ptSituation.getMiscellaneousReason()) {
+                case MISCELLANEOUS_REASON_ENUMERATION_UNKNOWN:
+                    return Cause.UNKNOWN_CAUSE;
+                case MISCELLANEOUS_REASON_ENUMERATION_UNDEFINED_PROBLEM:
+                    return Cause.OTHER_CAUSE;
                 case MISCELLANEOUS_REASON_ENUMERATION_ACCIDENT:
                 case MISCELLANEOUS_REASON_ENUMERATION_COLLISION:
                     return Cause.ACCIDENT;
+                case MISCELLANEOUS_REASON_ENUMERATION_HOLIDAY:
+                    return Cause.HOLIDAY;
                 case MISCELLANEOUS_REASON_ENUMERATION_DEMONSTRATION:
                 case MISCELLANEOUS_REASON_ENUMERATION_MARCH:
                     return Cause.DEMONSTRATION;
                 case MISCELLANEOUS_REASON_ENUMERATION_PERSON_ILL_ON_VEHICLE:
                 case MISCELLANEOUS_REASON_ENUMERATION_FATALITY:
+                case MISCELLANEOUS_REASON_ENUMERATION_INCIDENT:
                     return Cause.MEDICAL_EMERGENCY;
+                case MISCELLANEOUS_REASON_ENUMERATION_POLICE_ACTIVITY:
                 case MISCELLANEOUS_REASON_ENUMERATION_POLICE_REQUEST:
                 case MISCELLANEOUS_REASON_ENUMERATION_BOMB_ALERT:
                 case MISCELLANEOUS_REASON_ENUMERATION_CIVIL_EMERGENCY:
