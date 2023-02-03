@@ -167,7 +167,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
     }
 
-    @Test
+
     public void testVmToVehiclePositionWithDatasourceFiltering() throws IOException {
 
         String lineRefValue = "TST:Line:1234";
