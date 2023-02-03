@@ -171,16 +171,9 @@ public class SiriToGtfsRealtimeService {
         Preconditions.checkNotNull(datasource, "datasource");
 
         if (countMetric && prometheusMetricsService != null) {
-            if (datasourceVMWhitelist != null && !datasourceVMWhitelist.isEmpty() && !datasourceVMWhitelist.contains(datasource)) {
-                prometheusMetricsService.registerIncomingEntity("SIRI_VM", 1, true);
-            } else {
-                prometheusMetricsService.registerIncomingEntity("SIRI_VM", 1, false);
-            }
+            prometheusMetricsService.registerIncomingEntity("SIRI_VM", 1, false);
         }
 
-        if (datasourceVMWhitelist != null && !datasourceVMWhitelist.isEmpty()) {
-            Preconditions.checkState(datasourceVMWhitelist.contains(datasource), "datasource " + datasource + " must be in the whitelist");
-        }
 
         Preconditions.checkState(vehicleActivity.getMonitoredVehicleJourney().hasFramedVehicleJourneyRef());
         checkPreconditions(vehicleActivity.getMonitoredVehicleJourney().getFramedVehicleJourneyRef());
