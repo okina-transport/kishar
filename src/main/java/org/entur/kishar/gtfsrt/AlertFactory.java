@@ -50,8 +50,34 @@ public class AlertFactory {
         handleAffects(ptSituation, alert);
         handleConsequences(ptSituation, alert);
         handleUrls(ptSituation, alert);
+        handleSeverity(ptSituation, alert);
 
         return alert;
+    }
+
+    private void handleSeverity(PtSituationElementStructure ptSituation, Alert.Builder alert) {
+        if (ptSituation.getSeverity() == null){
+            return;
+        }
+
+        switch (ptSituation.getSeverity()){
+            case SEVERITY_ENUMERATION_UNKNOWN:
+            case SEVERITY_ENUMERATION_UNDEFINED:
+                alert.setSeverityLevel(Alert.SeverityLevel.UNKNOWN_SEVERITY);
+                break;
+            case SEVERITY_ENUMERATION_VERY_SLIGHT:
+            case SEVERITY_ENUMERATION_NO_IMPACT:
+                alert.setSeverityLevel(Alert.SeverityLevel.INFO);
+                break;
+            case SEVERITY_ENUMERATION_SLIGHT:
+            case SEVERITY_ENUMERATION_NORMAL:
+                alert.setSeverityLevel(Alert.SeverityLevel.WARNING);
+                break;
+            case SEVERITY_ENUMERATION_SEVERE:
+            case SEVERITY_ENUMERATION_VERY_SEVERE:
+                alert.setSeverityLevel(Alert.SeverityLevel.SEVERE);
+                break;
+        }
     }
 
     private void handleUrls(PtSituationElementStructure ptSituation, Alert.Builder alert) {

@@ -205,9 +205,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.google.transit</groupId>
+            <groupId>org.mobilitydata</groupId>
             <artifactId>gtfs-realtime-bindings</artifactId>
-            <version>0.0.4</version>
+            <version>0.0.8</version>
         </dependency>
 
         <!-- testing -->
