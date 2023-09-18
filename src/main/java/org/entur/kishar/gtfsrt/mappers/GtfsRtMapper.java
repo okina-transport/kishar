@@ -20,7 +20,7 @@ import java.util.Date;
 public class GtfsRtMapper {
 
     private final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd");
-    private final DateFormat gtfsRtTimeFormat = new SimpleDateFormat("HH:MM:ss");
+    private final DateFormat gtfsRtTimeFormat = new SimpleDateFormat("HH:mm:ss");
 
     private int closeToNextStopPercentage;
     private int closeToNextStopDistance;
