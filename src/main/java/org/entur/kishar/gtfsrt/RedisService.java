@@ -1,6 +1,9 @@
 package org.entur.kishar.gtfsrt;
 
 import com.google.common.collect.Maps;
+import com.google.protobuf.Duration;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.redisson.Redisson;
@@ -15,14 +18,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @Service
 @Configuration
 public class RedisService {
+
 
     enum Type {
         VEHICLE_POSITION("vehiclePositionMap"),
@@ -57,6 +59,7 @@ public class RedisService {
             redisson = Redisson.create(config);
         }
     }
+
     public void resetAllData() {
         LOG.info("Before - VEHICLE_POSITION: " + redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).size());
         redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).clear();
@@ -78,8 +81,82 @@ public class RedisService {
                 GtfsRtData gtfsRtData = gtfsRt.get(key);
                 long timeToLive = gtfsRtData.getTimeToLive().getSeconds();
                 if (timeToLive > 0) {
-                    gtfsRtMap.put(key.getBytes(), gtfsRtData.getData(), timeToLive, TimeUnit.SECONDS);
+                    if (Type.TRIP_UPDATE.equals(type)) {
+                        mergeTripUpdatesAndsave(key.getBytes(), gtfsRtData.getData(), timeToLive);
+                    } else {
+                        gtfsRtMap.put(key.getBytes(), gtfsRtData.getData(), timeToLive, TimeUnit.SECONDS);
+                    }
+
                 }
+            }
+        }
+    }
+
+    private void mergeTripUpdatesAndsave(byte[] key, byte[] gtfsRtDataBytes, long timeToLive) {
+        RMapCache<byte[], byte[]> gtfsRtMap = redisson.getMapCache(Type.TRIP_UPDATE.getMapIdentifier(), ByteArrayCodec.INSTANCE);
+
+        try {
+
+
+            byte[] existingJourney = gtfsRtMap.get(key);
+            if (existingJourney == null) {
+                //no existing journey. puting the new one in cache
+                gtfsRtMap.put(key, gtfsRtDataBytes, timeToLive, TimeUnit.SECONDS);
+            } else {
+
+                GtfsRealtime.FeedEntity entity = GtfsRealtime.FeedEntity.parseFrom(existingJourney);
+                GtfsRealtime.FeedEntity incomingTripUpdate = GtfsRealtime.FeedEntity.parseFrom(gtfsRtDataBytes);
+                GtfsRealtime.FeedEntity.Builder mergedEntity = GtfsRealtime.FeedEntity.newBuilder();
+
+                mergedEntity.setTripUpdate(buildMergedTripUpdate(entity, incomingTripUpdate));
+                mergedEntity.setVehicle(entity.getVehicle());
+                mergedEntity.setId(entity.getId());
+
+
+                Duration timeToLiveDur = Duration.newBuilder().setSeconds(timeToLive).build();
+                GtfsRtData mergedGtfsData = new GtfsRtData(mergedEntity.build().toByteArray(), timeToLiveDur);
+                gtfsRtMap.put(key, mergedGtfsData.getData() , timeToLive, TimeUnit.SECONDS);
+            }
+
+        } catch (InvalidProtocolBufferException e) {
+            throw new RuntimeException(e);
+        }
+
+
+    }
+
+    private GtfsRealtime.TripUpdate buildMergedTripUpdate(GtfsRealtime.FeedEntity existingEntity, GtfsRealtime.FeedEntity incomingEntity) {
+
+        GtfsRealtime.TripUpdate.Builder mergedTripUpdate = GtfsRealtime.TripUpdate.newBuilder();
+        mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
+        mergedTripUpdate.setVehicle(existingEntity.getTripUpdate().getVehicle());
+
+        if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())){
+            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
+        }
+
+        if (!existingEntity.getTripUpdate().getTrip().getRouteId().equals(incomingEntity.getTripUpdate().getTrip().getRouteId())){
+            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getRouteId() + " - " + incomingEntity.getTripUpdate().getTrip().getRouteId());
+        }
+
+        if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())){
+            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
+        }
+
+
+
+        List<String> alreadySeenStops = new ArrayList<>();
+        addStopUpdateTimes(mergedTripUpdate, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
+        addStopUpdateTimes(mergedTripUpdate, alreadySeenStops, incomingEntity.getTripUpdate().getStopTimeUpdateList());
+
+        return mergedTripUpdate.build();
+    }
+
+    private void addStopUpdateTimes(GtfsRealtime.TripUpdate.Builder mergedTripUpdate, List<String> alreadySeenStops, List<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates){
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : stopTimeUpdates) {
+            if (!alreadySeenStops.contains(stopTimeUpdate.getStopId())){
+                mergedTripUpdate.addStopTimeUpdate(stopTimeUpdate);
+                alreadySeenStops.add(stopTimeUpdate.getStopId());
             }
         }
     }
