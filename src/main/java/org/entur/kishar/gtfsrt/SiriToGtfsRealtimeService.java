@@ -466,7 +466,7 @@ public class SiriToGtfsRealtimeService {
 
                             Duration timeToLive;
                             if (activity.hasValidUntilTime()) {
-                                timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), activity.getValidUntilTime());
+                                timeToLive = Duration.newBuilder().setSeconds(Timestamps.between(SiriLibrary.getCurrentTime(), activity.getValidUntilTime()).getSeconds() + gracePeriod).build();
                             } else {
                                 timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
                             }
