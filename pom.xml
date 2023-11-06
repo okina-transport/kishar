@@ -27,7 +27,7 @@
 
     <groupId>org.entur.kishar</groupId>
     <artifactId>kishar</artifactId>
-    <version>1.0.5-mobi-iti</version>
+    <version>1.0.6-mobi-iti</version>
     <packaging>jar</packaging>
 
     <properties>
