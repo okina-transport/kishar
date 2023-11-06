@@ -4,6 +4,7 @@ import com.google.protobuf.Timestamp;
 
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.protobuf.util.Timestamps;
+import org.springframework.util.StringUtils;
 import uk.org.siri.www.siri.*;
 import uk.org.siri.www.siri.FramedVehicleJourneyRefStructure;
 import uk.org.siri.www.siri.LocationStructure;
@@ -109,7 +110,6 @@ public class GtfsRtMapper {
         if (!activity.hasMonitoredVehicleJourney()) {
             return null;
         }
-
         LocationStructure location = mvj.getVehicleLocation();
 
         if (mvj.hasVehicleLocation()) {
@@ -122,7 +122,7 @@ public class GtfsRtMapper {
             }
             vp.setTrip(td);
 
-            GtfsRealtime.VehicleDescriptor vd = getMonitoredVehicleJourneyAsVehicleDescriptor(mvj);
+            GtfsRealtime.VehicleDescriptor vd = getMonitoredVehicleJourneyAsVehicleDescriptor(mvj, activity);
             if (vd != null) {
                 vp.setVehicle(vd);
             }
@@ -221,14 +221,14 @@ public class GtfsRtMapper {
         return null;
     }
 
-    private GtfsRealtime.VehicleDescriptor getMonitoredVehicleJourneyAsVehicleDescriptor(VehicleActivityStructure.MonitoredVehicleJourneyType mvj) {
+    private GtfsRealtime.VehicleDescriptor getMonitoredVehicleJourneyAsVehicleDescriptor(VehicleActivityStructure.MonitoredVehicleJourneyType mvj, VehicleActivityStructure activity) {
         VehicleRefStructure vehicleRef = mvj.getVehicleRef();
-        if (!mvj.hasVehicleRef() || vehicleRef.getValue() == null) {
+        GtfsRealtime.VehicleDescriptor.Builder vd = GtfsRealtime.VehicleDescriptor.newBuilder();
+        String id = StringUtils.hasLength(vehicleRef.getValue()) ? vehicleRef.getValue() : StringUtils.hasLength(activity.getVehicleMonitoringRef().getValue()) ? activity.getVehicleMonitoringRef().getValue() : null;
+        if (!StringUtils.hasLength(id)){
             return null;
         }
-
-        GtfsRealtime.VehicleDescriptor.Builder vd = GtfsRealtime.VehicleDescriptor.newBuilder();
-        vd.setId(vehicleRef.getValue());
+        vd.setId(id);
         return vd.build();
     }
 
