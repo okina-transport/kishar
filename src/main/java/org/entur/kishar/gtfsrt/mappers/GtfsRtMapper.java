@@ -308,6 +308,9 @@ public class GtfsRtMapper {
                 Integer arrivalDelayInSeconds = null;
                 Integer departureDelayInSeconds = null;
 
+                long arrivalTime = 0L;
+                long departureTime = 0L;
+
                 if (monitoredCalls.hasAimedArrivalTime()) {
                     Timestamp updatedArrivalTime = null;
                     if (monitoredCalls.hasActualArrivalTime()) {
@@ -317,6 +320,7 @@ public class GtfsRtMapper {
                     }
                     if (updatedArrivalTime != null) {
                         arrivalDelayInSeconds = calculateDiff(monitoredCalls.getAimedArrivalTime(), updatedArrivalTime);
+                        arrivalTime = updatedArrivalTime.getSeconds();
                     }
                 }
 
@@ -331,6 +335,7 @@ public class GtfsRtMapper {
 
                     if (updatedDepartureTime != null) {
                         departureDelayInSeconds = calculateDiff(monitoredCalls.getAimedDepartureTime(), updatedDepartureTime);
+                        departureTime = updatedDepartureTime.getSeconds();
                     }
                 }
 
@@ -341,7 +346,7 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
                 stopCounter++;
 
         }
@@ -364,6 +369,9 @@ public class GtfsRtMapper {
                 Integer arrivalDelayInSeconds = null;
                 Integer departureDelayInSeconds = null;
 
+                long arrivalTime = 0L;
+                long departureTime = 0L;
+
                 if (recordedCall.hasAimedArrivalTime()) {
                     Timestamp updatedArrivalTime = null;
                     if (recordedCall.hasActualArrivalTime()) {
@@ -373,6 +381,7 @@ public class GtfsRtMapper {
                     }
                     if (updatedArrivalTime != null) {
                         arrivalDelayInSeconds = calculateDiff(recordedCall.getAimedArrivalTime(), updatedArrivalTime);
+                        arrivalTime = updatedArrivalTime.getSeconds();
                     }
                 }
 
@@ -387,6 +396,7 @@ public class GtfsRtMapper {
 
                     if (updatedDepartureTime != null) {
                         departureDelayInSeconds = calculateDiff(recordedCall.getAimedDepartureTime(), updatedDepartureTime);
+                        departureTime = updatedDepartureTime.getSeconds();
                     }
                 }
 
@@ -397,7 +407,7 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
 
                 stopCounter++;
             }
@@ -412,11 +422,16 @@ public class GtfsRtMapper {
                 Integer arrivalDelayInSeconds = null;
                 Integer departureDelayInSeconds = null;
 
+                long arrivalTime = 0L;
+                long departureTime = 0L;
+
                 if (estimatedCall.hasAimedArrivalTime() && estimatedCall.hasExpectedArrivalTime()){
                     arrivalDelayInSeconds = calculateDiff(estimatedCall.getAimedArrivalTime(), estimatedCall.getExpectedArrivalTime());
+                    arrivalTime = estimatedCall.getExpectedArrivalTime().getSeconds();
                 }
                 if (estimatedCall.hasAimedDepartureTime() && estimatedCall.hasExpectedDepartureTime()) {
                     departureDelayInSeconds = calculateDiff(estimatedCall.getAimedDepartureTime(), estimatedCall.getExpectedDepartureTime());
+                    departureTime = estimatedCall.getExpectedDepartureTime().getSeconds();
                 }
 
                 int stopSequence;
@@ -426,7 +441,7 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
 
                 stopCounter++;
             }
@@ -440,7 +455,7 @@ public class GtfsRtMapper {
         return null;
     }
 
-    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, int stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate) {
+    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, int stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected) {
 
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
@@ -448,11 +463,13 @@ public class GtfsRtMapper {
         if (arrivalDelayInSeconds != null) {
             GtfsRealtime.TripUpdate.StopTimeEvent.Builder arrivalStopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
             arrivalStopTimeEvent.setDelay(arrivalDelayInSeconds);
+            arrivalStopTimeEvent.setTime(arrivalExpected);
             stopTimeUpdate.setArrival(arrivalStopTimeEvent);
         }
         if (departureDelayInSeconds != null) {
             GtfsRealtime.TripUpdate.StopTimeEvent.Builder departureStopTimeEvent = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
             departureStopTimeEvent.setDelay(departureDelayInSeconds);
+            departureStopTimeEvent.setTime(departureExpected);
             stopTimeUpdate.setDeparture(departureStopTimeEvent);
         }
 
