@@ -188,17 +188,8 @@ public class SiriToGtfsRealtimeService {
         String datasource = estimatedVehicleJourney.getDataSource();
         Preconditions.checkNotNull(datasource, "datasource");
         if (prometheusMetricsService != null) {
-            if (datasourceETWhitelist != null && !datasourceETWhitelist.isEmpty() && !datasourceETWhitelist.contains(datasource)) {
-                prometheusMetricsService.registerIncomingEntity("SIRI_ET", 1, true);
-            } else {
-                prometheusMetricsService.registerIncomingEntity("SIRI_ET", 1, false);
-            }
+            prometheusMetricsService.registerIncomingEntity("SIRI_ET", 1, false);
         }
-
-        if (datasourceETWhitelist != null && !datasourceETWhitelist.isEmpty()) {
-            Preconditions.checkState(datasourceETWhitelist.contains(datasource), "datasource " + datasource + " must be in the whitelist");
-        }
-
         Preconditions.checkNotNull(estimatedVehicleJourney.getEstimatedCalls(), "EstimatedCalls");
         Preconditions.checkState(estimatedVehicleJourney.getEstimatedCalls().getEstimatedCallCount() > 0, "EstimatedCalls not empty");
     }
@@ -216,15 +207,7 @@ public class SiriToGtfsRealtimeService {
         String datasource = situation.getParticipantRef().getValue();
         Preconditions.checkNotNull(datasource, "datasource");
         if (prometheusMetricsService != null) {
-            if (datasourceSXWhitelist != null && !datasourceSXWhitelist.isEmpty() && !datasourceSXWhitelist.contains(datasource)) {
-                prometheusMetricsService.registerIncomingEntity("SIRI_SX", 1, true);
-            } else {
-                prometheusMetricsService.registerIncomingEntity("SIRI_SX", 1, false);
-            }
-        }
-
-        if (datasourceSXWhitelist != null && !datasourceSXWhitelist.isEmpty()) {
-            Preconditions.checkState(datasourceSXWhitelist.contains(datasource), "datasource " + datasource + " must be in the whitelist");
+            prometheusMetricsService.registerIncomingEntity("SIRI_SX", 1, false);
         }
     }
 
