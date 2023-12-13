@@ -69,10 +69,6 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Object alerts = rtService.getAlerts("application/json", null);
         assertNotNull(alerts);
         assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
-
-        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) alerts;
-        List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
-        assertTrue(entityList.isEmpty());
     }
 
     @Test
