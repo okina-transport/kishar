@@ -84,7 +84,7 @@ public class PubSubRoute extends RouteBuilder {
                     .process( p -> {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
-                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriEtToGtfsRt(siri);
+                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriEtToGtfsRt(siri, (String) p.getIn().getHeader("codespaceId"));
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })
@@ -101,7 +101,7 @@ public class PubSubRoute extends RouteBuilder {
                     .process( p -> {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
-                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriVmToGtfsRt(siri);
+                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriVmToGtfsRt(siri, (String) p.getIn().getHeader("codespaceId"));
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })
@@ -121,7 +121,7 @@ public class PubSubRoute extends RouteBuilder {
                     .process( p -> {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
-                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSxToGtfsRt(siri);
+                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSxToGtfsRt(siri, (String) p.getIn().getHeader("codespaceId"));
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })
@@ -132,7 +132,7 @@ public class PubSubRoute extends RouteBuilder {
                     .process( p -> {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
-                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSmToGtfsRt(siri);
+                        Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriSmToGtfsRt(siri, (String) p.getIn().getHeader("codespaceId"));
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })

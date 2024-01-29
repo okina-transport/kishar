@@ -47,7 +47,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     private Map<String, byte[]> getRedisMap(SiriToGtfsRealtimeService rtService, SiriType siri) {
-        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriSxToGtfsRt(siri);
+        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriSxToGtfsRt(siri, "test");
         Map<String, byte[]> redisMap = Maps.newHashMap();
         for (String key : gtfsRt.keySet()) {
             byte[] data = gtfsRt.get(key).getData();
@@ -57,10 +57,10 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testSituationToAlertWithDatasourceFiltering() throws IOException {
+    public void testSituationToAlertWithDatasetIdFiltering() throws IOException {
 
-        String datasource = "BNR";
-        SiriType siri = createSiriSx(datasource);
+        String datasetId = "BNR";
+        SiriType siri = createSiriSx(datasetId);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
@@ -73,18 +73,18 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
     @Test
     public void testMappingOfSiriSx() {
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriSx(datasource);
+        SiriType siri = createSiriSx(datasetId);
 
-        Map<String, GtfsRtData> result = rtService.convertSiriSxToGtfsRt(siri);
+        Map<String, GtfsRtData> result = rtService.convertSiriSxToGtfsRt(siri, "test");
 
         assertFalse(result.isEmpty());
     }
 
-    private SiriType createSiriSx(String datasource) {
+    private SiriType createSiriSx(String datasetId) {
         SituationExchangeDeliveryStructure.SituationsType situations = SituationExchangeDeliveryStructure.SituationsType.newBuilder()
-                .addPtSituationElement(createPtSituationElement(datasource))
+                .addPtSituationElement(createPtSituationElement(datasetId))
                 .build();
 
         SituationExchangeDeliveryStructure sxDelivery = SituationExchangeDeliveryStructure.newBuilder()

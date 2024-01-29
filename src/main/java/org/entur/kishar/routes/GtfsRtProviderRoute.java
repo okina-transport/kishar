@@ -56,21 +56,21 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
 
         from("direct:getTripUpdates")
                 .routeId("kishar.getTripUpdates")
-                .bean(siriToGtfsRealtimeService, "getTripUpdates(${header.Content-Type},${header.datasource})")
+                .bean(siriToGtfsRealtimeService, "getTripUpdates(${header.Content-Type},${header.datasetId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=trip-updates.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
         ;
 
         from("direct:getVehiclePositions")
                 .routeId("kishar.getVehiclePositions")
-                .bean(siriToGtfsRealtimeService, "getVehiclePositions(${header.Content-Type},${header.datasource})")
+                .bean(siriToGtfsRealtimeService, "getVehiclePositions(${header.Content-Type},${header.datasetId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=vehicle-positions.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
         ;
 
         from("direct:getAlerts")
                 .routeId("kishar.getAlerts")
-                .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasource})")
+                .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasetId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=alerts.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
         ;

@@ -32,7 +32,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         double longitude = 59.63;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
         float bearing = 123.45F;
         long velocity = 56;
@@ -43,7 +43,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         boolean isVehicleAtStop = false;
 
         SiriType siri = createSiriVmDelivery(stopPointRefValue, lineRefValue, latitude, longitude,
-                datedVehicleJourneyRef, vehicleRefValue, datasource, bearing,
+                datedVehicleJourneyRef, vehicleRefValue, datasetId, bearing,
                 velocity, occupancy, progressPercentage, distance, isVehicleAtStop);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
@@ -79,7 +79,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     private Map<String, byte[]> getRedisMap(
         SiriToGtfsRealtimeService realtimeService, SiriType siri
     ) {
-        Map<String, GtfsRtData> gtfsRt = realtimeService.convertSiriVmToGtfsRt(siri);
+        Map<String, GtfsRtData> gtfsRt = realtimeService.convertSiriVmToGtfsRt(siri, "test");
         Map<String, byte[]> redisMap = Maps.newHashMap();
         for (String key : gtfsRt.keySet()) {
             byte[] data = gtfsRt.get(key).getData();
@@ -97,7 +97,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         double longitude = 59.63;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
         float bearing = 123.45F;
         long velocity = 56;
@@ -108,7 +108,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         boolean isVehicleAtStop = false;
 
         SiriType siri = createSiriVmDelivery(stopPointRefValue, lineRefValue, latitude, longitude,
-                datedVehicleJourneyRef, vehicleRefValue, datasource, bearing,
+                datedVehicleJourneyRef, vehicleRefValue, datasetId, bearing,
                 velocity, occupancy, progressPercentage, distance, isVehicleAtStop);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
@@ -137,7 +137,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         double longitude = 59.63;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
         float bearing = 123.45F;
         long velocity = 56;
@@ -148,7 +148,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         boolean isVehicleAtStop = false;
 
         SiriType siri = createSiriVmDelivery(stopPointRefValue, lineRefValue, latitude, longitude,
-                datedVehicleJourneyRef, vehicleRefValue, datasource, bearing,
+                datedVehicleJourneyRef, vehicleRefValue, datasetId, bearing,
                 velocity, occupancy, progressPercentage, distance, isVehicleAtStop);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
@@ -168,7 +168,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
 
-    public void testVmToVehiclePositionWithDatasourceFiltering() throws IOException {
+    public void testVmToVehiclePositionWithDatasetIdFiltering() throws IOException {
 
         String lineRefValue = "TST:Line:1234";
         double latitude = 10.56;
@@ -176,11 +176,11 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         String datedVehicleJourneyRef1 = "TST:ServiceJourney:1234";
         String datedVehicleJourneyRef2 = "TST:ServiceJourney:1235";
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource1 = "RUT";
-        String datasource2 = "BNR";
+        String datasetId1 = "RUT";
+        String datasetId2 = "BNR";
 
-        SiriType siriRUT = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef1, vehicleRefValue, datasource1);
-        SiriType siriBNR = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef2, vehicleRefValue, datasource2);
+        SiriType siriRUT = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef1, vehicleRefValue, datasetId1);
+        SiriType siriBNR = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef2, vehicleRefValue, datasetId2);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siriRUT);
         Map<String, byte[]> siriBnrMap = getRedisMap(rtService, siriBNR);
@@ -223,9 +223,9 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         double longitude = 59.63;
         String datedVehicleJourneyRef = null;
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef, vehicleRefValue, datasource);
+        SiriType siri = createSiriVmDelivery(lineRefValue, latitude, longitude, datedVehicleJourneyRef, vehicleRefValue, datasetId);
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
@@ -255,7 +255,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         double longitude = 59.63;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
         String vehicleRefValue = "TST:Vehicle:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
         float bearing = 123.45F;
         long velocity = 56;
@@ -266,10 +266,10 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         boolean isVehicleAtStop = false;
 
         SiriType siri = createSiriVmDelivery(stopPointRefValue, lineRefValue, latitude, longitude,
-                datedVehicleJourneyRef, vehicleRefValue, datasource, bearing,
+                datedVehicleJourneyRef, vehicleRefValue, datasetId, bearing,
                 velocity, occupancy, progressPercentage, distance, isVehicleAtStop);
 
-        Map<String, GtfsRtData> result = rtService.convertSiriVmToGtfsRt(siri);
+        Map<String, GtfsRtData> result = rtService.convertSiriVmToGtfsRt(siri, "test");
 
         assertFalse(result.isEmpty());
     }
@@ -302,13 +302,13 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
                 .build();
     }
 
-    private SiriType createSiriVmDelivery(String lineRefValue, double latitude, double longitude, String datedVehicleJourneyRef, String vehicleRefValue, String datasource) {
+    private SiriType createSiriVmDelivery(String lineRefValue, double latitude, double longitude, String datedVehicleJourneyRef, String vehicleRefValue, String datasetId) {
 
         VehicleActivityStructure.MonitoredVehicleJourneyType.Builder mvjBuilder = VehicleActivityStructure.MonitoredVehicleJourneyType.newBuilder()
                 .setLineRef(createLineRef(lineRefValue))
                 .setVehicleRef(createVehicleRef(vehicleRefValue))
                 .setVehicleLocation(createLocation(longitude, latitude))
-                .setDataSource(datasource);
+                .setDataSource(datasetId);
 
         if (datedVehicleJourneyRef != null) {
             mvjBuilder.setFramedVehicleJourneyRef(Helper.createFramedVehicleJourneyRefStructure(datedVehicleJourneyRef));
@@ -337,7 +337,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
 
     private SiriType createSiriVmDelivery(String stopPointRefValue, String lineRefValue, double latitude, double longitude, String datedVehicleJourneyRef,
-                                      String vehicleRefValue, String datasource, float bearing, long velocity,
+                                      String vehicleRefValue, String datasetId, float bearing, long velocity,
                                       OccupancyEnumeration occupancy, int progressPercentage, int distance, boolean isVehicleAtStop) {
 
 
@@ -358,7 +358,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
                 .setBearing(bearing)
                 .setVelocity((int)velocity)
                 .setOccupancy(occupancy)
-                .setDataSource(datasource)
+                .setDataSource(datasetId)
                 .setMonitoredCall(monitoredCall)
                 .build();
 

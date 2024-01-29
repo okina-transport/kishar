@@ -70,11 +70,11 @@ public class SiriToGtfsRealtimeService {
      */
     private static final int gracePeriod = 5 * 60;
     private FeedMessage tripUpdates = createFeedMessageBuilder().build();
-    private Map<String, FeedMessage> tripUpdatesByDatasource = Maps.newHashMap();
+    private Map<String, FeedMessage> tripUpdatesByDatasetId = Maps.newHashMap();
     private FeedMessage vehiclePositions = createFeedMessageBuilder().build();
-    private Map<String, FeedMessage> vehiclePositionsByDatasource = Maps.newHashMap();
+    private Map<String, FeedMessage> vehiclePositionsByDatasetId = Maps.newHashMap();
     private FeedMessage alerts = createFeedMessageBuilder().build();
-    private Map<String, FeedMessage> alertsByDatasource = Maps.newHashMap();
+    private Map<String, FeedMessage> alertsByDatasetId = Maps.newHashMap();
 
     private GtfsRtMapper gtfsMapper;
 
@@ -106,13 +106,13 @@ public class SiriToGtfsRealtimeService {
         return status.toString();
     }
 
-    public Object getTripUpdates(String contentType, String datasource) {
+    public Object getTripUpdates(String contentType, String datasetId) {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_ET", 1);
         }
         FeedMessage feedMessage = tripUpdates;
-        if (datasource != null && !datasource.isEmpty()) {
-            feedMessage = tripUpdatesByDatasource.get(datasource);
+        if (datasetId != null && !datasetId.isEmpty()) {
+            feedMessage = tripUpdatesByDatasetId.get(datasetId);
             if (feedMessage == null) {
                 feedMessage = createFeedMessageBuilder().build();
             }
@@ -120,13 +120,13 @@ public class SiriToGtfsRealtimeService {
         return encodeFeedMessage(feedMessage, contentType);
     }
 
-    public Object getVehiclePositions(String contentType, String datasource) {
+    public Object getVehiclePositions(String contentType, String datasetId) {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_VM", 1);
         }
         FeedMessage feedMessage = vehiclePositions;
-        if (datasource != null && !datasource.isEmpty()) {
-            feedMessage = vehiclePositionsByDatasource.get(datasource);
+        if (datasetId != null && !datasetId.isEmpty()) {
+            feedMessage = vehiclePositionsByDatasetId.get(datasetId.toUpperCase());
             if (feedMessage == null) {
                 feedMessage = createFeedMessageBuilder().build();
             }
@@ -134,13 +134,13 @@ public class SiriToGtfsRealtimeService {
         return encodeFeedMessage(feedMessage, contentType);
     }
 
-    public Object getAlerts(String contentType, String datasource) {
+    public Object getAlerts(String contentType, String datasetId) {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
         }
         FeedMessage feedMessage = alerts;
-        if (datasource != null && !datasource.isEmpty()) {
-            feedMessage = alertsByDatasource.get(datasource);
+        if (datasetId != null && !datasetId.isEmpty()) {
+            feedMessage = alertsByDatasetId.get(datasetId);
             if (feedMessage == null) {
                 feedMessage = createFeedMessageBuilder().build();
             }
@@ -401,7 +401,7 @@ public class SiriToGtfsRealtimeService {
 
     public void setTripUpdates(FeedMessage tripUpdates, Map<String, FeedMessage> tripUpdatesByDatasource) {
         this.tripUpdates = tripUpdates;
-        this.tripUpdatesByDatasource = tripUpdatesByDatasource;
+        this.tripUpdatesByDatasetId = tripUpdatesByDatasource;
     }
 
     public FeedMessage getVehiclePositions() {
@@ -410,7 +410,7 @@ public class SiriToGtfsRealtimeService {
 
     public void setVehiclePositions(FeedMessage vehiclePositions, Map<String, FeedMessage> vehiclePositionsByDatasource) {
         this.vehiclePositions = vehiclePositions;
-        this.vehiclePositionsByDatasource = vehiclePositionsByDatasource;
+        this.vehiclePositionsByDatasetId = vehiclePositionsByDatasource;
     }
 
     public FeedMessage getAlerts() {
@@ -419,10 +419,10 @@ public class SiriToGtfsRealtimeService {
 
     public void setAlerts(FeedMessage alerts, Map<String, FeedMessage> alertsByDatasource) {
         this.alerts = alerts;
-        this.alertsByDatasource = alertsByDatasource;
+        this.alertsByDatasetId = alertsByDatasource;
     }
 
-    public Map<String, GtfsRtData> convertSiriVmToGtfsRt(SiriType siri) {
+    public Map<String, GtfsRtData> convertSiriVmToGtfsRt(SiriType siri, String codespaceId) {
 
         Map<String, GtfsRtData> result = Maps.newHashMap();
 
@@ -454,7 +454,7 @@ public class SiriToGtfsRealtimeService {
                                 timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
                             }
 
-                            result.put(new CompositeKey(key, activity.getMonitoredVehicleJourney().getDataSource()).asString(),
+                            result.put(new CompositeKey(key, codespaceId).asString(),
                                     new GtfsRtData(entity.build().toByteArray(), timeToLive));
                         } catch (Exception e) {
                             LOG.debug("Failed parsing vehicle activity", e);
@@ -471,7 +471,7 @@ public class SiriToGtfsRealtimeService {
         redisService.writeGtfsRt(vehiclePositions, RedisService.Type.VEHICLE_POSITION);
     }
 
-    public Map<String, GtfsRtData> convertSiriEtToGtfsRt(SiriType siri) {
+    public Map<String, GtfsRtData> convertSiriEtToGtfsRt(SiriType siri, String codespaceId) {
 
 
         Map<String, GtfsRtData> result = Maps.newHashMap();
@@ -527,7 +527,7 @@ public class SiriToGtfsRealtimeService {
                                             timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), expirationTime);
                                         }
 
-                                        result.put(new CompositeKey(key, estimatedVehicleJourney.getDataSource()).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
+                                        result.put(new CompositeKey(key, codespaceId).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
                                     } catch (Exception e) {
                                         LOG.debug("Failed parsing trip updates", e);
                                     }
@@ -545,7 +545,7 @@ public class SiriToGtfsRealtimeService {
         redisService.writeGtfsRt(tripUpdates, RedisService.Type.TRIP_UPDATE);
     }
 
-    public Map<String, GtfsRtData> convertSiriSmToGtfsRt(SiriType siri) {
+    public Map<String, GtfsRtData> convertSiriSmToGtfsRt(SiriType siri, String codespaceId) {
 
         Map<String, GtfsRtData> result = Maps.newHashMap();
 
@@ -580,7 +580,7 @@ public class SiriToGtfsRealtimeService {
                                 timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), expirationTime);
                             }
 
-                            result.put(new CompositeKey(key, "MOBIITI").asString(),
+                            result.put(new CompositeKey(key, codespaceId).asString(),
                                     new GtfsRtData(entity.build().toByteArray(), timeToLive));
                         } catch (Exception e) {
                             LOG.debug("Failed parsing vehicle activity", e);
@@ -619,7 +619,7 @@ public class SiriToGtfsRealtimeService {
         Preconditions.checkState(monitoredStopVisitStructure.getMonitoredVehicleJourney().hasFramedVehicleJourneyRef());
     }
 
-    public Map<String, GtfsRtData> convertSiriSxToGtfsRt(SiriType siri) {
+    public Map<String, GtfsRtData> convertSiriSxToGtfsRt(SiriType siri, String codespaceId) {
 
         Map<String, GtfsRtData> result = Maps.newHashMap();
 
@@ -654,7 +654,7 @@ public class SiriToGtfsRealtimeService {
                                     timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), endTime);
                                 }
 
-                                result.put(new CompositeKey(key, ptSituationElement.getParticipantRef().getValue()).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
+                                result.put(new CompositeKey(key, codespaceId).asString(), new GtfsRtData(entity.build().toByteArray(), timeToLive));
                             } catch (Exception e) {
                                 LOG.debug("Failed parsing alerts", e);
                             }

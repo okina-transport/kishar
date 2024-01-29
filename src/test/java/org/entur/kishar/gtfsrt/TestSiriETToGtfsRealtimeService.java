@@ -32,11 +32,11 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         int stopCount = 5;
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, delayPerStop), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, delayPerStop), datedVehicleJourneyRef, datasetId);
 
-        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
 
@@ -75,11 +75,11 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         String lineRefValue = "TST:Line:1234";
         int stopCount = 5;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, null), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, null), datedVehicleJourneyRef, datasetId);
 
-        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
 
@@ -126,8 +126,8 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
     }
 
-    private Map<String, byte[]> getRedisMap(SiriToGtfsRealtimeService rtService, SiriType siri) {
-        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriEtToGtfsRt(siri);
+    private Map<String, byte[]> getRedisMap(SiriToGtfsRealtimeService rtService, SiriType siri, String datasetId) {
+        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriEtToGtfsRt(siri, datasetId);
         Map<String, byte[]> redisMap = Maps.newHashMap();
         for (String key : gtfsRt.keySet()) {
             byte[] data = gtfsRt.get(key).getData();
@@ -143,11 +143,11 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         int stopCount = 5;
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, delayPerStop), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(stopCount, delayPerStop), datedVehicleJourneyRef, datasetId);
 
-        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         rtService.writeOutput();
@@ -202,8 +202,8 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdateFilterOnDatasource() throws IOException {
-        // Specifying local service for specific datasource-testing
+    public void testEtToTripUpdateFilterOnDatasetId() throws IOException {
+        // Specifying local service for specific datasetId-testing
         SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService,
                 Lists.newArrayList("RUT", "BNR"), Lists.newArrayList(),
                 Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
@@ -212,14 +212,14 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         int delayPerStop = 30;
         String datedVehicleJourneyRef1 = "TST:ServiceJourney:1234";
         String datedVehicleJourneyRef2 = "TST:ServiceJourney:1235";
-        String datasource1 = "RUT";
-        String datasource2 = "BNR";
+        String datasetId1 = "RUT";
+        String datasetId2 = "BNR";
 
-        SiriType siriRUT = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef1, datasource1);
-        SiriType siriBNR = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef2, datasource2);
+        SiriType siriRUT = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef1, datasetId1);
+        SiriType siriBNR = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef2, datasetId2);
 
-        Map<String, byte[]> redisMap = getRedisMap(localRtService, siriRUT);
-        Map<String, byte[]> siriBnrMap = getRedisMap(localRtService, siriBNR);
+        Map<String, byte[]> redisMap = getRedisMap(localRtService, siriRUT,datasetId1);
+        Map<String, byte[]> siriBnrMap = getRedisMap(localRtService, siriBNR,datasetId2);
 
         redisMap.putAll(siriBnrMap);
 
@@ -274,11 +274,11 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasetId);
 
-        Map<String, byte[]> redisMap = getRedisMap(localRtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         localRtService.writeOutput();
@@ -301,16 +301,16 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdateIgnoreDatasourceNotInWhitelist() throws IOException {
+    public void testEtToTripUpdateIgnoreDatasetIdNotInWhitelist() throws IOException {
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "NSB";
+        String datasetId = "NSB";
 
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasetId);
 
-        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         rtService.writeOutput();
@@ -324,16 +324,16 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     public void testEtWithoutFramedVehicleRef() throws IOException {
         String lineRefValue = "TST:Line:1234";
         String datedVehicleJourneyRef = null;
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
         // Assert that ET is ignored when framedVehicleRef is null
-        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, 30), datedVehicleJourneyRef, datasource);
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, 30), datedVehicleJourneyRef, datasetId);
         assertFalse(siri.getServiceDelivery().getEstimatedTimetableDeliveryList().get(0)
                 .getEstimatedJourneyVersionFrameList().get(0)
                 .getEstimatedVehicleJourneyList().get(0)
                 .hasFramedVehicleJourneyRef());
 
-        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         rtService.writeOutput();
@@ -348,14 +348,14 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
 
         datedVehicleJourneyRef = "TTT:ServiceJourney:1234";
-        siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, 30), datedVehicleJourneyRef, datasource);
+        siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, 30), datedVehicleJourneyRef, datasetId);
 
         assertNotNull(siri.getServiceDelivery().getEstimatedTimetableDeliveryList().get(0)
                 .getEstimatedJourneyVersionFrameList().get(0)
                 .getEstimatedVehicleJourneyList().get(0)
                 .getFramedVehicleJourneyRef());
 
-        redisMap = getRedisMap(rtService, siri);
+        redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         rtService.writeOutput();
@@ -375,16 +375,16 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
-        String datasource = "RUT";
+        String datasetId = "RUT";
 
-        SiriType et = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, delayPerStop), datedVehicleJourneyRef, datasource);
+        SiriType et = createSiriEtDelivery(lineRefValue, createEstimatedCalls(5, delayPerStop), datedVehicleJourneyRef, datasetId);
 
-        Map<String, GtfsRtData> result = rtService.convertSiriEtToGtfsRt(et);
+        Map<String, GtfsRtData> result = rtService.convertSiriEtToGtfsRt(et, "test");
 
         assertFalse(result.isEmpty());
     }
 
-    private SiriType createSiriEtDelivery(String lineRefValue, List<? extends EstimatedCallStructure> calls, String datedVehicleJourneyRef, String datasource) {
+    private SiriType createSiriEtDelivery(String lineRefValue, List<? extends EstimatedCallStructure> calls, String datedVehicleJourneyRef, String datasetId) {
 
         EstimatedVehicleJourneyStructure.EstimatedCallsType estimatedCalls = EstimatedVehicleJourneyStructure.EstimatedCallsType.newBuilder()
                 .addAllEstimatedCall(calls)
@@ -392,7 +392,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         EstimatedVehicleJourneyStructure.Builder estimatedVehicleJourneyBuilder = EstimatedVehicleJourneyStructure.newBuilder()
                 .setLineRef(createLineRef(lineRefValue))
-                .setDataSource(datasource)
+                .setDataSource(datasetId)
                 .setEstimatedCalls(estimatedCalls);
 
         if (datedVehicleJourneyRef != null) {
