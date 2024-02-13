@@ -4,6 +4,11 @@ import com.google.protobuf.Timestamp;
 
 import com.google.transit.realtime.GtfsRealtime;
 import com.google.protobuf.util.Timestamps;
+import org.entur.kishar.utils.IdProcessingParameters;
+import org.entur.kishar.utils.ObjectType;
+import org.entur.kishar.utils.Utils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import uk.org.siri.www.siri.*;
 import uk.org.siri.www.siri.FramedVehicleJourneyRefStructure;
@@ -16,9 +21,12 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 
 
 public class GtfsRtMapper {
+
+    private Utils utils = new Utils();
 
     private final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd");
     private final DateFormat gtfsRtTimeFormat = new SimpleDateFormat("HH:mm:ss");
@@ -31,7 +39,7 @@ public class GtfsRtMapper {
         this.closeToNextStopDistance = closeToNextStopDistance;
     }
 
-    public GtfsRealtime.TripUpdate.Builder mapTripUpdateFromVehicleJourney(EstimatedVehicleJourneyStructure vehicleJourney) {
+    public GtfsRealtime.TripUpdate.Builder mapTripUpdateFromVehicleJourney(String datasetId, EstimatedVehicleJourneyStructure vehicleJourney) {
         GtfsRealtime.TripUpdate.Builder tripUpdate = GtfsRealtime.TripUpdate.newBuilder();
 
         GtfsRealtime.TripDescriptor td = getEstimatedVehicleJourneyAsTripDescriptor(vehicleJourney);
@@ -42,11 +50,11 @@ public class GtfsRtMapper {
             tripUpdate.setVehicle(vd);
         }
 
-        applyStopSpecificDelayToTripUpdateIfApplicable(vehicleJourney, tripUpdate);
+        applyStopSpecificDelayToTripUpdateIfApplicable(datasetId, vehicleJourney, tripUpdate);
         return tripUpdate;
     }
 
-    public GtfsRealtime.TripUpdate.Builder mapTripUpdateFromStopVisit(MonitoredStopVisitStructure stopVisit) {
+    public GtfsRealtime.TripUpdate.Builder mapTripUpdateFromStopVisit(String datasetId, MonitoredStopVisitStructure stopVisit) {
         GtfsRealtime.TripUpdate.Builder tripUpdate = GtfsRealtime.TripUpdate.newBuilder();
 
         GtfsRealtime.TripDescriptor td = getMonitoredStopVisitAsTripDescriptor(stopVisit);
@@ -57,7 +65,7 @@ public class GtfsRtMapper {
             tripUpdate.setVehicle(vd);
         }
 
-        applyStopSpecificDelayToTripUpdateIfApplicable(stopVisit, tripUpdate);
+        applyStopSpecificDelayToTripUpdateIfApplicable(datasetId, stopVisit, tripUpdate);
         return tripUpdate;
     }
 
@@ -288,7 +296,7 @@ public class GtfsRtMapper {
         return vd.build();
     }
 
-    private void applyStopSpecificDelayToTripUpdateIfApplicable(
+    private void applyStopSpecificDelayToTripUpdateIfApplicable(String datasetId,
             MonitoredStopVisitStructure stopVisit,
             GtfsRealtime.TripUpdate.Builder tripUpdate) {
 
@@ -346,14 +354,16 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
+
+
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
                 stopCounter++;
 
         }
 
     }
 
-    private void applyStopSpecificDelayToTripUpdateIfApplicable(
+    private void applyStopSpecificDelayToTripUpdateIfApplicable(String datasetId,
             EstimatedVehicleJourneyStructure mvj,
             GtfsRealtime.TripUpdate.Builder tripUpdate) {
         EstimatedVehicleJourneyStructure.EstimatedCallsType estimatedCalls = mvj.getEstimatedCalls();
@@ -407,7 +417,7 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
 
                 stopCounter++;
             }
@@ -441,7 +451,7 @@ public class GtfsRtMapper {
                     stopSequence = stopCounter;
                 }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
 
                 stopCounter++;
             }
@@ -455,8 +465,9 @@ public class GtfsRtMapper {
         return null;
     }
 
-    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, int stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected) {
+    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, int stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected, String datasetId) {
 
+        Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetId, ObjectType.STOP);
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
 
@@ -474,8 +485,21 @@ public class GtfsRtMapper {
         }
 
         stopTimeUpdate.setStopSequence(stopSequence);
-        stopTimeUpdate.setStopId(stopPointRef.getValue());
+
+        stopTimeUpdate.setStopId(extractAndTransformStopId(idProcessingMap, datasetId,stopPointRef.getValue()));
 
         tripUpdate.addStopTimeUpdate(stopTimeUpdate);
+    }
+
+
+    /**
+     * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
+     *
+     * @param idProcessingMap   the map that associate datasetId to idProcessingParams
+     * @return the transformed stop id
+     */
+    private String extractAndTransformStopId(Map<String, IdProcessingParameters> idProcessingMap, String datasetId, String stopId) {
+
+        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
     }
 }

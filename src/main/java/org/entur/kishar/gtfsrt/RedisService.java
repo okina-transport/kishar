@@ -6,6 +6,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
+import org.entur.kishar.utils.BlobStoreService;
 import org.redisson.Redisson;
 
 import org.redisson.api.RMapCache;
@@ -14,11 +15,15 @@ import org.redisson.client.codec.ByteArrayCodec;
 import org.redisson.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
+import java.io.*;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -29,7 +34,8 @@ public class RedisService {
     enum Type {
         VEHICLE_POSITION("vehiclePositionMap"),
         TRIP_UPDATE("tripUpdateMap"),
-        ALERT("alertMap");
+        ALERT("alertMap"),
+        ID_MAPPING("idMap");
 
         private String mapIdentifier;
 
@@ -43,6 +49,20 @@ public class RedisService {
     }
 
     private static Logger LOG = LoggerFactory.getLogger(RedisService.class);
+
+    @Value("${kishar.mapping.stopplaces.update.frequency.min:60}")
+    private int updateFrequency = 60;
+
+    @Value("${kishar.mapping.quays.gcs.path}")
+    private String quayMappingPath;
+
+    @Value("${kishar.mapping.stopplaces.gcs.path}")
+    private String stopPlaceMappingPath;
+
+    @Autowired
+    BlobStoreService blobStoreService;
+
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private final boolean redisEnabled;
 
     RedissonClient redisson;
@@ -57,7 +77,8 @@ public class RedisService {
                     .addNodeAddress("redis://" + host + ":" + port);
 
             redisson = Redisson.create(config);
-        }
+
+            executor.scheduleAtFixedRate(this::updateIdMapping, 1, updateFrequency, TimeUnit.MINUTES);        }
     }
 
     public void resetAllData() {
@@ -72,6 +93,34 @@ public class RedisService {
         LOG.info("Before - ALERT: " + redisson.getMap(Type.ALERT.mapIdentifier).size());
         redisson.getMap(Type.ALERT.mapIdentifier).clear();
         LOG.info("After - ALERT: " + redisson.getMap(Type.ALERT.mapIdentifier).size());
+
+        LOG.info("Before - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+        redisson.getMap(Type.ID_MAPPING.mapIdentifier).clear();
+        LOG.info("After - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+    }
+
+    private void updateIdMapping() {
+        idMapping(quayMappingPath);
+        idMapping(stopPlaceMappingPath);
+    }
+
+    private void idMapping(String csvFilePath){
+
+        final InputStream blob = blobStoreService.getBlob(csvFilePath);
+
+        Map<String, String> stopPlaceMappings = new HashMap<>();
+
+        if (blob != null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(blob));
+            reader.lines().forEach(line -> {
+                StringTokenizer tokenizer = new StringTokenizer(line, ",");
+                String id = tokenizer.nextToken();
+                String generatedId = tokenizer.nextToken();
+
+                stopPlaceMappings.put(id, generatedId);
+            });
+        }
+        writeIdMapping(stopPlaceMappings, Type.ID_MAPPING);
     }
 
     public void writeGtfsRt(Map<String, GtfsRtData> gtfsRt, Type type) {
@@ -92,11 +141,17 @@ public class RedisService {
         }
     }
 
+    public void writeIdMapping(Map<String, String> idMapping, Type type) {
+        if (redisEnabled) {
+            RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier());
+            idMap.putAll(idMapping);
+        }
+    }
+
     private void mergeTripUpdatesAndsave(byte[] key, byte[] gtfsRtDataBytes, long timeToLive) {
         RMapCache<byte[], byte[]> gtfsRtMap = redisson.getMapCache(Type.TRIP_UPDATE.getMapIdentifier(), ByteArrayCodec.INSTANCE);
 
         try {
-
 
             byte[] existingJourney = gtfsRtMap.get(key);
             if (existingJourney == null) {
@@ -122,10 +177,9 @@ public class RedisService {
             throw new RuntimeException(e);
         }
 
-
     }
 
-    private GtfsRealtime.TripUpdate buildMergedTripUpdate(GtfsRealtime.FeedEntity existingEntity, GtfsRealtime.FeedEntity incomingEntity) {
+    public GtfsRealtime.TripUpdate buildMergedTripUpdate(GtfsRealtime.FeedEntity existingEntity, GtfsRealtime.FeedEntity incomingEntity) {
 
         GtfsRealtime.TripUpdate.Builder mergedTripUpdate = GtfsRealtime.TripUpdate.newBuilder();
         mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
@@ -142,8 +196,6 @@ public class RedisService {
         if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())){
             LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
         }
-
-
 
         List<String> alreadySeenStops = new ArrayList<>();
         addStopUpdateTimes(mergedTripUpdate, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
@@ -178,6 +230,18 @@ public class RedisService {
             return result;
         } else {
             return Maps.newHashMap();
+        }
+    }
+
+    public String getMobiitiId(String provider, String originalId){
+        if(provider == null || !redisEnabled){
+            return originalId;
+        }else{
+            RMapCache<String, String> stopIdMapped = redisson.getMapCache(Type.ID_MAPPING.getMapIdentifier());
+            return stopIdMapped.get(provider + ":Quay:" + originalId) != null ?
+                    stopIdMapped.get(provider + ":Quay:" + originalId) :
+                    stopIdMapped.get(provider + ":StopPlace:" + originalId) != null ?
+                    stopIdMapped.get(provider + ":StopPlace:" + originalId) : originalId;
         }
     }
 }
