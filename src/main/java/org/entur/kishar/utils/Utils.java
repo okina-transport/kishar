@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -16,7 +15,12 @@ public class Utils {
 
     private static final Logger logger = LoggerFactory.getLogger(Utils.class);
 
-    private SubscriptionConfig subscriptionConfig = new SubscriptionConfig();
+    private final SubscriptionConfig subscriptionConfig;
+
+    @Autowired
+    public Utils(SubscriptionConfig subscriptionConfig) {
+        this.subscriptionConfig = subscriptionConfig;
+    }
 
     /**
      * Builds a map with key = datasetId and value = idProcessingParams for this dataset and objectType = stop

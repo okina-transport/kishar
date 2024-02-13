@@ -27,7 +27,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", null);
+        Object alerts = rtService.getAlerts("application/json", null, false);
         assertNotNull(alerts);
         assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
 
@@ -35,7 +35,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
         assertFalse(entityList.isEmpty());
 
-        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getAlerts(null, null));
+        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getAlerts(null, null, false));
         assertEquals(feedMessage, byteArrayFeedMessage);
 
         GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
@@ -66,7 +66,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", null);
+        Object alerts = rtService.getAlerts("application/json", null, false);
         assertNotNull(alerts);
         assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
     }

@@ -1,7 +1,10 @@
 package org.entur.kishar.gtfsrt;
 
+import jdk.jshell.execution.Util;
 import org.entur.kishar.App;
 import org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary;
+import org.entur.kishar.utils.Utils;
+import org.entur.kishar.utils.subscription.SubscriptionConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -44,11 +47,19 @@ public abstract class SiriToGtfsRealtimeServiceTest {
     @Mock
     protected RedisService redisService;
 
+    @Mock
+    protected Utils utils;
+
+    @Mock
+    protected SubscriptionConfig subscriptionConfig;
+
     @Before
     public void before() {
         redisService = Mockito.mock(RedisService.class);
         rtService = new SiriToGtfsRealtimeService(new AlertFactory(),
                 redisService,
+                utils,
+                subscriptionConfig,
                 datasourceETWhitelist,
                 datasourceVMWhitelist,
                 datasourceSXWhitelist,
@@ -59,8 +70,8 @@ public abstract class SiriToGtfsRealtimeServiceTest {
     @After
     public void cleanup() {
         //Deletes all received data
-        rtService.setAlerts(GtfsRealtimeLibrary.createFeedMessageBuilder().build(), new HashMap<>());
-        rtService.setVehiclePositions(GtfsRealtimeLibrary.createFeedMessageBuilder().build(), new HashMap<>());
-        rtService.setTripUpdates(GtfsRealtimeLibrary.createFeedMessageBuilder().build(), new HashMap<>());
+        rtService.setAlerts(new HashMap<>());
+        rtService.setVehiclePositions(new HashMap<>());
+        rtService.setTripUpdates(new HashMap<>());
     }
 }

@@ -12,6 +12,7 @@ import org.redisson.Redisson;
 import org.redisson.api.RMapCache;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.ByteArrayCodec;
+import org.redisson.client.codec.StringCodec;
 import org.redisson.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +144,7 @@ public class RedisService {
 
     public void writeIdMapping(Map<String, String> idMapping, Type type) {
         if (redisEnabled) {
-            RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier());
+            RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
             idMap.putAll(idMapping);
         }
     }
@@ -233,15 +234,13 @@ public class RedisService {
         }
     }
 
-    public String getMobiitiId(String provider, String originalId){
-        if(provider == null || !redisEnabled){
-            return originalId;
-        }else{
-            RMapCache<String, String> stopIdMapped = redisson.getMapCache(Type.ID_MAPPING.getMapIdentifier());
-            return stopIdMapped.get(provider + ":Quay:" + originalId) != null ?
-                    stopIdMapped.get(provider + ":Quay:" + originalId) :
-                    stopIdMapped.get(provider + ":StopPlace:" + originalId) != null ?
-                    stopIdMapped.get(provider + ":StopPlace:" + originalId) : originalId;
+    public String readIdMap(Type type, String key) {
+        if (redisEnabled) {
+            RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
+
+            return idMap.get(key);
+        } else {
+            return null;
         }
     }
 }

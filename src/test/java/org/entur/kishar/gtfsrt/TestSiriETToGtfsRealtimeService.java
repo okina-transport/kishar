@@ -204,7 +204,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     @Test
     public void testEtToTripUpdateFilterOnDatasetId() throws IOException {
         // Specifying local service for specific datasetId-testing
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService,
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
                 Lists.newArrayList("RUT", "BNR"), Lists.newArrayList(),
                 Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
@@ -269,7 +269,8 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
     @Test
     public void testEtToTripUpdateNoWhitelist() throws IOException {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -299,6 +300,77 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         assertEquals(1, tripUpdate.getStopTimeUpdateCount());
 
     }
+
+    @Test
+    public void testEtToTripUpdateOriginalId() throws IOException {
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+
+        String lineRefValue = "TST:Line:1234";
+        int delayPerStop = 30;
+        String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
+        String datasetId = "RUT";
+
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasetId);
+
+        Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
+
+        when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        localRtService.writeOutput();
+
+        Object tripUpdates = localRtService.getTripUpdates("application/json", null, true);
+        assertNotNull(tripUpdates);
+        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
+        List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
+        assertFalse(entityList.isEmpty());
+
+        GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
+        assertNotNull(entity);
+        GtfsRealtime.TripUpdate tripUpdate = entity.getTripUpdate();
+        assertNotNull(tripUpdate);
+
+        assertEquals(1, tripUpdate.getStopTimeUpdateCount());
+        assertEquals("TST:Quay:1234-0", tripUpdate.getStopTimeUpdate(0).getStopId());
+
+    }
+    @Test
+    public void testEtToTripUpdateMobiitiId() throws IOException {
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+
+        String lineRefValue = "TST:Line:1234";
+        int delayPerStop = 30;
+        String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
+        String datasetId = "RUT";
+
+        SiriType siri = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef, datasetId);
+
+        Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
+
+        when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(redisService.readIdMap(RedisService.Type.ID_MAPPING, "TST:Quay:1234-0")).thenReturn("MOBIITI:Quay:1234-0");
+        localRtService.writeOutput();
+
+        Object tripUpdates = localRtService.getTripUpdates("application/json", null, false);
+        assertNotNull(tripUpdates);
+        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
+        List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
+        assertFalse(entityList.isEmpty());
+
+        GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
+        assertNotNull(entity);
+        GtfsRealtime.TripUpdate tripUpdate = entity.getTripUpdate();
+        assertNotNull(tripUpdate);
+
+        assertEquals(1, tripUpdate.getStopTimeUpdateCount());
+        assertEquals("MOBIITI:Quay:1234-0", tripUpdate.getStopTimeUpdate(0).getStopId());
+
+    }
+
 
     @Test
     public void testEtToTripUpdateIgnoreDatasetIdNotInWhitelist() throws IOException {

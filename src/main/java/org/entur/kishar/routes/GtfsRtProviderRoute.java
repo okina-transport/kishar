@@ -82,7 +82,7 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
                     .otherwise()
                         .setHeader("useOriginalId", constant(false))
                 .end()
-                .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasetId})")
+                .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasetId},${header.useOriginalId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=alerts.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
         ;

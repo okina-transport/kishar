@@ -28,9 +28,8 @@ import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.entur.kishar.gtfsrt.mappers.GtfsRtMapper;
 import org.entur.kishar.metrics.PrometheusMetricsService;
-import org.entur.kishar.utils.IdProcessingParameters;
-import org.entur.kishar.utils.ObjectType;
 import org.entur.kishar.utils.Utils;
+import org.entur.kishar.utils.subscription.SubscriptionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,6 +81,8 @@ public class SiriToGtfsRealtimeService {
 
     public SiriToGtfsRealtimeService(@Autowired AlertFactory alertFactory,
                                      @Autowired RedisService redisService,
+                                     @Autowired Utils utils,
+                                     @Autowired SubscriptionConfig subscriptionConfig,
                                      @Value("${kishar.datasource.et.whitelist}") List<String> datasourceETWhitelist,
                                      @Value("${kishar.datasource.vm.whitelist}") List<String> datasourceVMWhitelist,
                                      @Value("${kishar.datasource.sx.whitelist}") List<String> datasourceSXWhitelist,
@@ -92,7 +93,7 @@ public class SiriToGtfsRealtimeService {
         this.datasourceSXWhitelist = datasourceSXWhitelist;
         this.alertFactory = alertFactory;
         this.redisService = redisService;
-        this.gtfsMapper = new GtfsRtMapper(closeToNextStopPercentage, closeToNextStopDistance);
+        this.gtfsMapper = new GtfsRtMapper(utils, subscriptionConfig, closeToNextStopPercentage, closeToNextStopDistance);
     }
 
     public void reset() {
@@ -124,12 +125,11 @@ public class SiriToGtfsRealtimeService {
         } else {
             feedMessage = getTripUpdates();
         }
-        //todo mapping tripUpdate et alerte id à revoir vehicle ok
         if(!useOriginalId){
             feedMessage = feedMessage.toBuilder().clearEntity().addAllEntity(feedMessage.getEntityList().stream()
                             .map(entity -> {
                                 FeedEntity.Builder entityBuilder = entity.toBuilder();
-                                mapMobiitiStopId(datasetId, entityBuilder); // Passer le Builder à la méthode
+                                mapTripUpdatesMobiitiStopId(entityBuilder);
                                 return entityBuilder.build();
                             })
                             .collect(Collectors.toList()))
@@ -154,18 +154,28 @@ public class SiriToGtfsRealtimeService {
         return encodeFeedMessage(feedMessage, contentType);
     }
 
-    public Object getAlerts(String contentType, String datasetId) {
+    public Object getAlerts(String contentType, String datasetId, boolean useOriginalId) {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
         }
-        FeedMessage feedMessage =  FeedMessage.newBuilder().build();
+        FeedMessage feedMessage;
         if (datasetId != null && !datasetId.isEmpty()) {
-            feedMessage = alertsByDatasetId.get(datasetId.toUpperCase());
+            feedMessage = alertsByDatasetId.get(datasetId);
             if (feedMessage == null) {
                 feedMessage = createFeedMessageBuilder().build();
             }
         }else {
             feedMessage = getAlerts();
+        }
+        if(!useOriginalId){
+            feedMessage = feedMessage.toBuilder().clearEntity().addAllEntity(feedMessage.getEntityList().stream()
+                            .map(entity -> {
+                                FeedEntity.Builder entityBuilder = entity.toBuilder();
+                                mapAlertsMobiitiStopId(entityBuilder);
+                                return entityBuilder.build();
+                            })
+                            .collect(Collectors.toList()))
+                    .build();
         }
         return encodeFeedMessage(feedMessage, contentType);
     }
@@ -307,7 +317,7 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
 
-        setTripUpdates(feedMessageBuilder.build(), buildFeedMessageMap(feedMessageBuilderMap));
+        setTripUpdates(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     private Map<String, FeedMessage> buildFeedMessageMap(Map<String, FeedMessage.Builder> feedMessageBuilderMap) {
@@ -377,7 +387,7 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
 
-        setVehiclePositions(feedMessageBuilder.build(), buildFeedMessageMap(feedMessageBuilderMap));
+        setVehiclePositions(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     private String getVehicleIdForKey(TripAndVehicleKey key) {
@@ -418,53 +428,86 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
 
-        setAlerts(feedMessageBuilder.build(), buildFeedMessageMap(feedMessageBuilderMap));
+        setAlerts(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     public FeedMessage getTripUpdates() {
         GtfsRealtime.FeedMessage.Builder mergedMessageBuilder = GtfsRealtime.FeedMessage.newBuilder();
-        return tripUpdatesByDatasetId.values().stream().map(FeedMessage::toBuilder)
+        GtfsRealtime.FeedHeader.Builder mergedHeaderBuilder = GtfsRealtime.FeedHeader.newBuilder();
+        mergedHeaderBuilder.setTimestamp(System.currentTimeMillis() / 1000L);
+        mergedHeaderBuilder.setIncrementality(GtfsRealtime.FeedHeader.Incrementality.FULL_DATASET);
+        mergedHeaderBuilder.setGtfsRealtimeVersion("1.0");
+
+        // Fusionner les en-têtes
+        tripUpdatesByDatasetId.values().stream()
+                .map(FeedMessage::getHeader)
+                .forEach(mergedHeaderBuilder::mergeFrom);
+
+        mergedMessageBuilder.setHeader(mergedHeaderBuilder.build());
+        tripUpdatesByDatasetId.values().stream().map(FeedMessage::toBuilder)
                 .reduce(mergedMessageBuilder, (mergedBuilder, nextBuilder) -> {
                     mergedBuilder.mergeFrom(nextBuilder.build());
                     return mergedBuilder;
                 })
                 .build();
+        return mergedMessageBuilder.build();
     }
 
-    //todo arg 1 useless
-    public void setTripUpdates(FeedMessage tripUpdates, Map<String, FeedMessage> tripUpdatesByDatasource) {
+    public void setTripUpdates(Map<String, FeedMessage> tripUpdatesByDatasource) {
         this.tripUpdatesByDatasetId = tripUpdatesByDatasource;
     }
 
     public FeedMessage getVehiclePositions() {
         GtfsRealtime.FeedMessage.Builder mergedMessageBuilder = GtfsRealtime.FeedMessage.newBuilder();
-        return vehiclePositionsByDatasetId.values().stream()
+        GtfsRealtime.FeedHeader.Builder mergedHeaderBuilder = GtfsRealtime.FeedHeader.newBuilder();
+        mergedHeaderBuilder.setTimestamp(System.currentTimeMillis() / 1000L);
+        mergedHeaderBuilder.setIncrementality(GtfsRealtime.FeedHeader.Incrementality.FULL_DATASET);
+        mergedHeaderBuilder.setGtfsRealtimeVersion("1.0");
+
+        vehiclePositionsByDatasetId.values().stream()
+                .map(FeedMessage::getHeader)
+                .forEach(mergedHeaderBuilder::mergeFrom);
+        mergedMessageBuilder.setHeader(mergedHeaderBuilder.build());
+
+        vehiclePositionsByDatasetId.values().stream()
                 .map(FeedMessage::toBuilder)
                 .reduce(mergedMessageBuilder, (mergedBuilder, nextBuilder) -> {
                     mergedBuilder.mergeFrom(nextBuilder.build());
                     return mergedBuilder;
                 })
                 .build();
+
+        return mergedMessageBuilder.build();
     }
 
-    //todo arg 1 useless
-    public void setVehiclePositions(FeedMessage vehiclePositions, Map<String, FeedMessage> vehiclePositionsByDatasource) {
+    public void setVehiclePositions(Map<String, FeedMessage> vehiclePositionsByDatasource) {
         this.vehiclePositionsByDatasetId = vehiclePositionsByDatasource;
     }
 
     public FeedMessage getAlerts() {
         GtfsRealtime.FeedMessage.Builder mergedMessageBuilder = GtfsRealtime.FeedMessage.newBuilder();
-        return alertsByDatasetId.values().stream()
+        GtfsRealtime.FeedHeader.Builder mergedHeaderBuilder = GtfsRealtime.FeedHeader.newBuilder();
+        mergedHeaderBuilder.setTimestamp(System.currentTimeMillis() / 1000L);
+        mergedHeaderBuilder.setIncrementality(GtfsRealtime.FeedHeader.Incrementality.FULL_DATASET);
+        mergedHeaderBuilder.setGtfsRealtimeVersion("1.0");
+
+        alertsByDatasetId.values().stream()
+                .map(FeedMessage::getHeader)
+                .forEach(mergedHeaderBuilder::mergeFrom);
+        mergedMessageBuilder.setHeader(mergedHeaderBuilder.build());
+
+        alertsByDatasetId.values().stream()
                 .map(FeedMessage::toBuilder)
                 .reduce(mergedMessageBuilder, (mergedBuilder, nextBuilder) -> {
                     mergedBuilder.mergeFrom(nextBuilder.build());
                     return mergedBuilder;
                 })
                 .build();
+
+        return mergedMessageBuilder.build();
     }
 
-    //todo arg 1 useless
-    public void setAlerts(FeedMessage alerts, Map<String, FeedMessage> alertsByDatasource) {
+    public void setAlerts(Map<String, FeedMessage> alertsByDatasource) {
         this.alertsByDatasetId = alertsByDatasource;
     }
 
@@ -482,7 +525,7 @@ public class SiriToGtfsRealtimeService {
                     for (VehicleActivityStructure activity : deliveryStructure.getVehicleActivityList()) {
                         try {
                             checkPreconditions(activity);
-                            VehiclePosition.Builder builder = gtfsMapper.convertSiriToGtfsRt(activity);
+                            VehiclePosition.Builder builder = gtfsMapper.convertSiriToGtfsRt(codespaceId, activity);
                             if (builder.getTimestamp() <= 0) {
                                 builder.setTimestamp(System.currentTimeMillis());
                             }
@@ -716,12 +759,28 @@ public class SiriToGtfsRealtimeService {
         redisService.writeGtfsRt(alerts, RedisService.Type.ALERT);
     }
 
-    private void mapMobiitiStopId(String provider, FeedEntity.Builder entityBuilder){
+    private void mapAlertsMobiitiStopId(FeedEntity.Builder entityBuilder){
+        GtfsRealtime.Alert.Builder alertBuilder = entityBuilder.getAlertBuilder();
+        List<EntitySelector> updatedEntities = alertBuilder.getInformedEntityBuilderList().stream()
+                .map(entitySelector -> {
+                    if (entitySelector.hasStopId()) {
+                        String updatedStopId = redisService.readIdMap(RedisService.Type.ID_MAPPING, entitySelector.getStopId());
+                        entitySelector = entitySelector
+                                .setStopId(updatedStopId != null ? updatedStopId : entitySelector.getStopId())
+                                .clearRouteId();
+                    }
+                    return entitySelector.build();
+                }).collect(Collectors.toList());
+        GtfsRealtime.Alert updatedAlert = alertBuilder.clearInformedEntity().addAllInformedEntity(updatedEntities).build();
+        entityBuilder.setAlert(updatedAlert);
+    }
+
+    private void mapTripUpdatesMobiitiStopId(FeedEntity.Builder entityBuilder){
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = entityBuilder.getTripUpdateBuilder();
         List<TripUpdate.StopTimeUpdate> updatedStopTimeUpdates = tripUpdateBuilder.getStopTimeUpdateBuilderList().stream()
                 .map(stopTimeUpdateBuilder -> {
-                    String updatedStopId = stopTimeUpdateBuilder.getStopId();
-                    return stopTimeUpdateBuilder.setStopId(updatedStopId).build();
+                    String updatedStopId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopTimeUpdateBuilder.getStopId());
+                    return stopTimeUpdateBuilder.setStopId(updatedStopId != null ? updatedStopId : stopTimeUpdateBuilder.getStopId()).build();
                 })
                 .collect(Collectors.toList());
         GtfsRealtime.TripUpdate updatedTripUpdate = tripUpdateBuilder.clearStopTimeUpdate().addAllStopTimeUpdate(updatedStopTimeUpdates).build();

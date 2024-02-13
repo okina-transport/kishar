@@ -33,6 +33,8 @@ public class SubscriptionConfig {
 
     private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
 
+    public SubscriptionConfig() {}
+
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
         for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
             if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
@@ -42,5 +44,8 @@ public class SubscriptionConfig {
         return Optional.empty();
     }
 
+    public void setIdProcessingParameters(List<IdProcessingParameters> idProcessingParameters) {
+        this.idProcessingParameters = idProcessingParameters;
+    }
 }
 
