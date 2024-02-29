@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class GtfsRtProviderRoute extends RestRouteBuilder {
 
     private SiriToGtfsRealtimeService siriToGtfsRealtimeService;
+    public static final String PARAM_DATASET_ID = "datasetId";
 
     public GtfsRtProviderRoute(@Autowired SiriToGtfsRealtimeService siriToGtfsRealtimeService) {
         this.siriToGtfsRealtimeService = siriToGtfsRealtimeService;
@@ -35,9 +36,9 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
         super.configure();
 
         rest("/api/")
-                .get("trip-updates").to("direct:getTripUpdates").produces("application/octet-stream").id("kishar.trip-updates")
-                .get("vehicle-positions").to("direct:getVehiclePositions").produces("application/octet-stream").id("kishar.vehicle-positions")
-                .get("alerts").to("direct:getAlerts").produces("application/octet-stream").id("kishar.alerts")
+                .get("trip-updates/{" + PARAM_DATASET_ID + "}").to("direct:getTripUpdates").produces("application/octet-stream").id("kishar.trip-updates")
+                .get("vehicle-positions/{" + PARAM_DATASET_ID + "}").to("direct:getVehiclePositions").produces("application/octet-stream").id("kishar.vehicle-positions")
+                .get("alerts/{" + PARAM_DATASET_ID + "}").to("direct:getAlerts").produces("application/octet-stream").id("kishar.alerts")
                 .get("debug/status").to("direct:getStatus").produces("application/text").id("kishar.status")
                 .get("debug/reset").to("direct:reset").produces("application/text").id("kishar.status")
         ;

@@ -23,9 +23,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Service
 @Configuration
@@ -36,6 +34,7 @@ public class RedisService {
         VEHICLE_POSITION("vehiclePositionMap"),
         TRIP_UPDATE("tripUpdateMap"),
         ALERT("alertMap"),
+        ARE_FLEXIBLE_LINES("areFlexibleLines"),
         ID_MAPPING("idMap");
 
         private String mapIdentifier;
@@ -59,6 +58,9 @@ public class RedisService {
 
     @Value("${kishar.mapping.stopplaces.gcs.path}")
     private String stopPlaceMappingPath;
+
+    @Value("${kishar.lineIds.file}")
+    private String lineMappingPath;
 
     @Autowired
     BlobStoreService blobStoreService;
@@ -98,11 +100,16 @@ public class RedisService {
         LOG.info("Before - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
         redisson.getMap(Type.ID_MAPPING.mapIdentifier).clear();
         LOG.info("After - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+
+        LOG.info("Before - ARE_FLEXIBLE_LINES: " + redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
+        redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).clear();
+        LOG.info("After - ARE_FLEXIBLE_LINES: " + redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
     }
 
     private void updateIdMapping() {
         idMapping(quayMappingPath);
         idMapping(stopPlaceMappingPath);
+        updateLineIdMapping(lineMappingPath);
     }
 
     private void idMapping(String csvFilePath){
@@ -122,6 +129,34 @@ public class RedisService {
             });
         }
         writeIdMapping(stopPlaceMappings, Type.ID_MAPPING);
+    }
+
+    private void updateLineIdMapping(String lineIdsPath) {
+        LOG.info("Fetching line id data - start. Fetching line id from {}", lineIdsPath);
+        long t1 = System.currentTimeMillis();
+
+        final InputStream blob = blobStoreService.getBlob(lineIdsPath);
+
+        Map<String, Boolean> areLineFlexible = new HashMap<>();
+
+        if (blob != null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(blob));
+
+            reader.lines().forEach(line -> {
+                StringTokenizer tokenizer = new StringTokenizer(line, ",");
+                String lineId = tokenizer.nextToken();
+                String isFlexible = tokenizer.nextToken();
+                areLineFlexible.put(lineId, Boolean.valueOf(isFlexible));
+
+            });
+
+            long t2 = System.currentTimeMillis();
+
+            LOG.info("Fetched mapping data - {} mappings, found {} duplicates. [fetched:{}ms]", areLineFlexible.size(), (t2 - t1));
+        } else {
+            LOG.error("Blob is null. Can't update line mapping");
+        }
+        writeIdMappingBoolean(areLineFlexible, Type.ARE_FLEXIBLE_LINES);
     }
 
     public void writeGtfsRt(Map<String, GtfsRtData> gtfsRt, Type type) {
@@ -145,6 +180,13 @@ public class RedisService {
     public void writeIdMapping(Map<String, String> idMapping, Type type) {
         if (redisEnabled) {
             RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
+            idMap.putAll(idMapping);
+        }
+    }
+
+    public void writeIdMappingBoolean(Map<String, Boolean> idMapping, Type type) {
+        if (redisEnabled) {
+            RMapCache<String, Boolean> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
             idMap.putAll(idMapping);
         }
     }
@@ -241,6 +283,25 @@ public class RedisService {
             return idMap.get(key);
         } else {
             return null;
+        }
+    }
+
+    private String readBooleanMap(Type type, String key, String datasetId) {
+        if (redisEnabled) {
+            RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
+
+            return idMap.get(datasetId.toUpperCase() + ":Line:" + key);
+        } else {
+            return "false";
+        }
+    }
+
+    public String readLineIdMap(Type type, String key, String datasetId) {
+        String isFlexibleLine = readBooleanMap(type, key, datasetId);
+        if("true".equals(isFlexibleLine)){
+            return datasetId.toUpperCase() + ":FlexibleLine:"+ key;
+        } else {
+            return datasetId.toUpperCase() + ":Line:" + key;
         }
     }
 }
