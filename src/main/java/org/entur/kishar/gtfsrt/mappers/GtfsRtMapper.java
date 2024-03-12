@@ -99,6 +99,9 @@ public class GtfsRtMapper {
         if (fvjRef.hasLineRef()) {
             td.setRouteId(fvjRef.getLineRef().getValue());
         }
+        if (fvjRef.hasFramedVehicleJourneyRef() && fvjRef.getFramedVehicleJourneyRef().hasDataFrameRef()){
+            td.setTripId(fvjRef.getFramedVehicleJourneyRef().getDataFrameRef().getValue());
+        }
 
         if (fvjRef.hasOriginAimedDepartureTime()) {
             final Date date = new Date(getInstant(fvjRef.getOriginAimedDepartureTime()).toEpochMilli());

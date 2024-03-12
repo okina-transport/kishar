@@ -723,10 +723,14 @@ public class SiriToGtfsRealtimeService {
 
     private void mapTripUpdatesMobiitiId(FeedEntity.Builder entityBuilder, String datasetId){
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = entityBuilder.getTripUpdateBuilder();
-        if(tripUpdateBuilder.hasTrip() && tripUpdateBuilder.getTrip() != null && tripUpdateBuilder.getTrip().hasRouteId()
-            && StringUtils.hasLength(tripUpdateBuilder.getTrip().getRouteId())){
-            String updatedId = redisService.readLineIdMap(RedisService.Type.ARE_FLEXIBLE_LINES, tripUpdateBuilder.getTrip().getRouteId(), datasetId);
-            tripUpdateBuilder.getTripBuilder().setRouteId(updatedId);
+        if(tripUpdateBuilder.hasTrip() && tripUpdateBuilder.getTrip() != null) {
+            if (tripUpdateBuilder.getTrip().hasRouteId() && StringUtils.hasLength(tripUpdateBuilder.getTrip().getRouteId())){
+                String updatedId = redisService.readLineIdMap(RedisService.Type.ARE_FLEXIBLE_LINES, tripUpdateBuilder.getTrip().getRouteId(), datasetId);
+                tripUpdateBuilder.getTripBuilder().setRouteId(updatedId);
+            }
+            if (tripUpdateBuilder.getTrip().hasTripId() && StringUtils.hasLength(tripUpdateBuilder.getTrip().getTripId())){
+                tripUpdateBuilder.getTripBuilder().setRouteId(datasetId.toUpperCase() + ":VehiculeJourney:" + tripUpdateBuilder.getTrip().getTripId());
+            }
         }
         List<TripUpdate.StopTimeUpdate> updatedStopTimeUpdates = tripUpdateBuilder.getStopTimeUpdateBuilderList().stream()
                 .map(stopTimeUpdateBuilder -> {
