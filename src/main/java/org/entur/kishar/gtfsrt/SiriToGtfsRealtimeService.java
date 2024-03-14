@@ -159,7 +159,7 @@ public class SiriToGtfsRealtimeService {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
         }
-        FeedMessage feedMessage = alertsByDatasetId.get(datasetId);
+        FeedMessage feedMessage = alertsByDatasetId.get(datasetId.toUpperCase());
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
         }
@@ -701,7 +701,15 @@ public class SiriToGtfsRealtimeService {
         List<EntitySelector> updatedEntities = alertBuilder.getInformedEntityBuilderList().stream()
                 .map(entitySelector -> {
                     if (entitySelector.hasStopId()) {
-                        String updatedId = redisService.readIdMap(RedisService.Type.ID_MAPPING, entitySelector.getStopId());
+                        String updatedId;
+                        if(entitySelector.getStopId().contains(":")){
+                            updatedId = redisService.readIdMap(RedisService.Type.ID_MAPPING, entitySelector.getStopId());
+                        } else {
+                            updatedId = redisService.readIdMap(RedisService.Type.ID_MAPPING,datasetId.toUpperCase() + ":Quay:" +entitySelector.getStopId());
+                            if(updatedId == null){
+                                updatedId = redisService.readIdMap(RedisService.Type.ID_MAPPING,datasetId.toUpperCase() + ":StopPlace:" +entitySelector.getStopId());
+                            }
+                        }
                         entitySelector = entitySelector
                                 .setStopId(updatedId != null ? updatedId : entitySelector.getStopId());
                     }
