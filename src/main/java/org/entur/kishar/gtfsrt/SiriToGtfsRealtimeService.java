@@ -711,9 +711,14 @@ public class SiriToGtfsRealtimeService {
                                 .setRouteId(updatedId != null ? updatedId : entitySelector.getRouteId());
                     }
                     if (entitySelector.hasAgencyId()) {
-                        String updatedId = datasetId + ":Network:"+ entitySelector.getAgencyId();
+                        String updatedId = datasetId.toUpperCase() + ":Network:"+ entitySelector.getAgencyId();
                         entitySelector = entitySelector
                                 .setAgencyId(updatedId);
+                    }
+                    if (entitySelector.hasTrip() && entitySelector.getTrip().hasTripId()) {
+                        String updatedId = datasetId.toUpperCase() + ":VehicleJourney:"+ entitySelector.getTrip().getTripId();
+                        entitySelector = entitySelector.setTrip(entitySelector.getTripBuilder()
+                                .setTripId(updatedId));
                     }
                     return entitySelector.build();
                 }).collect(Collectors.toList());
@@ -729,7 +734,7 @@ public class SiriToGtfsRealtimeService {
                 tripUpdateBuilder.getTripBuilder().setRouteId(updatedId);
             }
             if (tripUpdateBuilder.getTrip().hasTripId() && StringUtils.hasLength(tripUpdateBuilder.getTrip().getTripId())){
-                tripUpdateBuilder.getTripBuilder().setRouteId(datasetId.toUpperCase() + ":VehiculeJourney:" + tripUpdateBuilder.getTrip().getTripId());
+                tripUpdateBuilder.getTripBuilder().setTripId(datasetId.toUpperCase() + ":VehiculeJourney:" + tripUpdateBuilder.getTrip().getTripId());
             }
         }
         List<TripUpdate.StopTimeUpdate> updatedStopTimeUpdates = tripUpdateBuilder.getStopTimeUpdateBuilderList().stream()
