@@ -66,7 +66,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", null, false);
+        Object alerts = rtService.getAlerts("application/json", "BNR", false);
         assertNotNull(alerts);
         assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
     }
