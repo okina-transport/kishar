@@ -123,6 +123,10 @@ public class AlertFactory {
                     timeRange.setEnd(validityPeriod.getEndTime().getSeconds());
                 }
 
+                if (validityPeriod.hasStartTime() && !validityPeriod.hasEndTime()){
+                    timeRange.setEnd(Long.MAX_VALUE);
+                }
+
                 if (timeRange.hasStart() || timeRange.hasEnd()) {
                     serviceAlert.addActivePeriod(timeRange);
                 }

@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static junit.framework.TestCase.*;
 import static org.entur.kishar.gtfsrt.Helper.createPtSituationElement;
+import static org.entur.kishar.gtfsrt.Helper.createPtSituationElementWithoutEndDateValidityPeriod;
 import static org.entur.kishar.gtfsrt.TestAlertFactory.assertAlert;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +43,6 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         assertNotNull(entity);
         GtfsRealtime.Alert alert = entity.getAlert();
         assertNotNull(alert);
-
         assertAlert(alert);
     }
 
@@ -82,9 +82,53 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         assertFalse(result.isEmpty());
     }
 
+    @Test
+    public void testSituationToAlertWithDatasetIdFilteringWithoutEndDateValidityPeriod() throws IOException {
+        SiriType siri = createSiriSxWithoutEndDateValidityPeriod("TEST");
+        Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
+
+        when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
+        rtService.writeOutput();
+        Object alerts = rtService.getAlerts("application/json", "TEST", false);
+        assertNotNull(alerts);
+        assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
+
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) alerts;
+        List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
+        assertFalse(entityList.isEmpty());
+
+        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getAlerts(null, "TEST", true));
+        assertEquals(feedMessage, byteArrayFeedMessage);
+
+        GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
+        assertNotNull(entity);
+        GtfsRealtime.Alert alert = entity.getAlert();
+        assertNotNull(alert);
+        assertAlert(alert);
+        assertEquals(feedMessage.getEntityList().get(0).getAlert().getActivePeriod(0).getEnd(), Long.MAX_VALUE);
+    }
+
     private SiriType createSiriSx(String datasetId) {
         SituationExchangeDeliveryStructure.SituationsType situations = SituationExchangeDeliveryStructure.SituationsType.newBuilder()
                 .addPtSituationElement(createPtSituationElement(datasetId))
+                .build();
+
+        SituationExchangeDeliveryStructure sxDelivery = SituationExchangeDeliveryStructure.newBuilder()
+                .setSituations(situations)
+                .build();
+
+        ServiceDeliveryType serviceDelivery = ServiceDeliveryType.newBuilder()
+                .addSituationExchangeDelivery(sxDelivery)
+                .build();
+
+        return SiriType.newBuilder()
+                .setServiceDelivery(serviceDelivery)
+                .build();
+    }
+
+    private SiriType createSiriSxWithoutEndDateValidityPeriod(String datasetId) {
+        SituationExchangeDeliveryStructure.SituationsType situations = SituationExchangeDeliveryStructure.SituationsType.newBuilder()
+                .addPtSituationElement(createPtSituationElementWithoutEndDateValidityPeriod(datasetId))
                 .build();
 
         SituationExchangeDeliveryStructure sxDelivery = SituationExchangeDeliveryStructure.newBuilder()
