@@ -43,6 +43,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary.createFeedMessageBuilder;
+import static org.entur.kishar.utils.Constants.MAX_END_DATE;
 
 @Service
 @Configuration
@@ -669,6 +670,10 @@ public class SiriToGtfsRealtimeService {
 
                                 Timestamp endTime = null;
                                 for (HalfOpenTimestampOutputRangeStructure range : ptSituationElement.getValidityPeriodList()) {
+                                    if(!range.hasEndTime()){
+                                        endTime = Timestamp.newBuilder().setSeconds(MAX_END_DATE).build();
+                                        break;
+                                    }
                                     Timestamp rangeEndTimestamp = range.getEndTime();
                                     endTime = SiriLibrary.getLatestTimestamp(endTime, rangeEndTimestamp);
                                 }

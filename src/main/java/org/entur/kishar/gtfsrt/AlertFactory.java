@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.List;
 
 import static org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary.translation;
+import static org.entur.kishar.utils.Constants.MAX_END_DATE;
 
 @Service
 public class AlertFactory {
@@ -124,7 +125,7 @@ public class AlertFactory {
                 }
 
                 if (validityPeriod.hasStartTime() && !validityPeriod.hasEndTime()){
-                    timeRange.setEnd(Long.MAX_VALUE);
+                    timeRange.setEnd(MAX_END_DATE);
                 }
 
                 if (timeRange.hasStart() || timeRange.hasEnd()) {

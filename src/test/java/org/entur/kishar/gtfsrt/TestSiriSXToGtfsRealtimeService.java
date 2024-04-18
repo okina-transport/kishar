@@ -16,6 +16,7 @@ import static junit.framework.TestCase.*;
 import static org.entur.kishar.gtfsrt.Helper.createPtSituationElement;
 import static org.entur.kishar.gtfsrt.Helper.createPtSituationElementWithoutEndDateValidityPeriod;
 import static org.entur.kishar.gtfsrt.TestAlertFactory.assertAlert;
+import static org.entur.kishar.utils.Constants.MAX_END_DATE;
 import static org.mockito.Mockito.when;
 
 public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
@@ -105,7 +106,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         GtfsRealtime.Alert alert = entity.getAlert();
         assertNotNull(alert);
         assertAlert(alert);
-        assertEquals(feedMessage.getEntityList().get(0).getAlert().getActivePeriod(0).getEnd(), Long.MAX_VALUE);
+        assertEquals(feedMessage.getEntityList().get(0).getAlert().getActivePeriod(0).getEnd(), MAX_END_DATE);
     }
 
     private SiriType createSiriSx(String datasetId) {
