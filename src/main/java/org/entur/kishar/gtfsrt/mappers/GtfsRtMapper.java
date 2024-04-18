@@ -198,7 +198,7 @@ public class GtfsRtMapper {
                 }
 
                 if (monitoredCall.hasStopPointRef()) {
-                    vp.setStopId(extractAndTransformStopId(datasetId,monitoredCall.getStopPointRef().getValue()));
+                    vp.setStopId(extractAndTransformStopId(datasetId, monitoredCall.getStopPointRef().getValue()));
                 }
 
                 vp.setCurrentStopSequence(monitoredCall.getOrder());
@@ -490,7 +490,7 @@ public class GtfsRtMapper {
 
         stopTimeUpdate.setStopSequence(stopSequence);
 
-        stopTimeUpdate.setStopId(extractAndTransformStopId(datasetId,stopPointRef.getValue()));
+        stopTimeUpdate.setStopId(extractAndTransformStopId(datasetId, stopPointRef.getValue()));
 
         tripUpdate.addStopTimeUpdate(stopTimeUpdate);
     }
