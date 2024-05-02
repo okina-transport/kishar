@@ -4,8 +4,6 @@ import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.utils.BlobStoreService;
@@ -30,6 +28,7 @@ import java.util.concurrent.*;
 @Service
 @Configuration
 public class RedisService {
+
 
     enum Type {
         VEHICLE_POSITION("vehiclePositionMap"),
