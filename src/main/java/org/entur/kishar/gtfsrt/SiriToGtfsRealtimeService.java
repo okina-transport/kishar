@@ -347,17 +347,33 @@ public class SiriToGtfsRealtimeService {
         return b.toString();
     }
 
-    private String getTripIdForMonitoredStopVisit(MonitoredStopVisitStructure stopVisit) {
+    private String getKeyFromStopVisit(MonitoredStopVisitStructure stopVisit) {
         StringBuilder b = new StringBuilder();
         MonitoredVehicleJourneyStructure mvj = stopVisit.getMonitoredVehicleJourney();
-        FramedVehicleJourneyRefStructure fvjRef = mvj.getFramedVehicleJourneyRef();
-        b.append((fvjRef.getDatedVehicleJourneyRef()));
-        b.append('-');
-        b.append(fvjRef.getDataFrameRef().getValue());
-        if (mvj.hasVehicleRef() && mvj.getVehicleRef().getValue() != null) {
+        if (mvj.getFramedVehicleJourneyRef() != null && org.apache.commons.lang3.StringUtils.isNotEmpty(mvj.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef())){
+            FramedVehicleJourneyRefStructure fvjRef = mvj.getFramedVehicleJourneyRef();
+            b.append((fvjRef.getDatedVehicleJourneyRef()));
             b.append('-');
-            b.append(mvj.getVehicleRef().getValue());
+            b.append(fvjRef.getDataFrameRef().getValue());
+            if (mvj.hasVehicleRef() && mvj.getVehicleRef().getValue() != null) {
+                b.append('-');
+                b.append(mvj.getVehicleRef().getValue());
+            }
+        }else{
+            if (mvj.getLineRef() != null){
+                b.append(mvj.getLineRef().getValue() + "-");
+            }
+
+            if (mvj.getDirectionNameList() != null && !mvj.getDirectionNameList().isEmpty()){
+                NaturalLanguageStringStructure direction = mvj.getDirectionNameList().get(0);
+                b.append(direction.getValue() + "-");
+            }
+
+            if (mvj.getMonitoredCall() != null && mvj.getMonitoredCall().getAimedArrivalTime() != null){
+                b.append(mvj.getMonitoredCall().getAimedArrivalTime().getSeconds());
+            }
         }
+
         return b.toString();
     }
 
@@ -592,7 +608,7 @@ public class SiriToGtfsRealtimeService {
                             TripUpdate.Builder builder = gtfsMapper.mapTripUpdateFromStopVisit(datasetId, monitoredStopVisitStructure);
 
                             FeedEntity.Builder entity = FeedEntity.newBuilder();
-                            String key = getTripIdForMonitoredStopVisit(monitoredStopVisitStructure);
+                            String key = getKeyFromStopVisit(monitoredStopVisitStructure);
                             entity.setId(key);
 
                             entity.setTripUpdate(builder);
@@ -642,7 +658,7 @@ public class SiriToGtfsRealtimeService {
 
     private void checkPreconditions(MonitoredStopVisitStructure monitoredStopVisitStructure) {
         Preconditions.checkState(monitoredStopVisitStructure.hasMonitoringRef(), "MonitoredRef");
-        Preconditions.checkState(monitoredStopVisitStructure.getMonitoredVehicleJourney().hasFramedVehicleJourneyRef());
+
     }
 
     public Map<String, GtfsRtData> convertSiriSxToGtfsRt(SiriType siri, String datasetId) {

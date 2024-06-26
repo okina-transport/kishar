@@ -18,7 +18,8 @@ import uk.org.siri.www.siri.ProgressBetweenStopsStructure;
 import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.Map;
 
@@ -101,6 +102,11 @@ public class GtfsRtMapper {
         }
         if (fvjRef.hasFramedVehicleJourneyRef() && fvjRef.getFramedVehicleJourneyRef().hasDataFrameRef()){
             td.setTripId(fvjRef.getFramedVehicleJourneyRef().getDataFrameRef().getValue());
+        }else{
+            // no vehicleJourneyRef in siri. Using line/direction/time instead
+            td.setRouteId(getLineRef(stopVisit));
+            td.setDirectionId(getDirectionId(stopVisit));
+            mapStartDate(td, stopVisit);
         }
 
         if (fvjRef.hasOriginAimedDepartureTime()) {
@@ -112,6 +118,54 @@ public class GtfsRtMapper {
         return td.build();
     }
 
+    private void mapStartDate(GtfsRealtime.TripDescriptor.Builder td, MonitoredStopVisitStructure stopVisit) {
+
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getMonitoredCall() == null ||
+                stopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedArrivalTime() == null){
+            return ;
+        }
+
+        Timestamp aimedTime = stopVisit.getMonitoredVehicleJourney().getMonitoredCall().getAimedArrivalTime();
+        ZoneId parisZoneId = ZoneId.of("Europe/Paris");
+
+        LocalDate localDate = Instant.ofEpochSecond(aimedTime.getSeconds())
+                .atZone(parisZoneId)
+                .toLocalDate();
+
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        td.setStartDate(localDate.format(formatter));
+
+        ZonedDateTime zonedDateTime = Instant.ofEpochSecond(aimedTime.getSeconds())
+                .atZone(parisZoneId);
+
+        LocalTime localTime = zonedDateTime.toLocalTime();
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        td.setStartTime(localTime.format(timeFormatter));
+    }
+
+    private int getDirectionId(MonitoredStopVisitStructure stopVisit) {
+
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getDirectionNameList() == null ||
+                            stopVisit.getMonitoredVehicleJourney().getDirectionNameList().isEmpty()){
+            return 0;
+        }
+
+        String directionName = stopVisit.getMonitoredVehicleJourney().getDirectionNameList().get(0).getValue();
+        try {
+            return Integer.parseInt(directionName);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private String getLineRef(MonitoredStopVisitStructure stopVisit) {
+
+        if (stopVisit.getMonitoredVehicleJourney() == null || stopVisit.getMonitoredVehicleJourney().getLineRef() == null){
+            return null;
+        }
+        return stopVisit.getMonitoredVehicleJourney().getLineRef().getValue();
+    }
 
 
     public GtfsRealtime.VehiclePosition.Builder convertSiriToGtfsRt(String datasetId, VehicleActivityStructure activity) {
