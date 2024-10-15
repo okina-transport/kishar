@@ -228,15 +228,15 @@ public class RedisService {
         mergedTripUpdate.setVehicle(existingEntity.getTripUpdate().getVehicle());
 
         if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())){
-            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
+            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
         }
 
         if (!existingEntity.getTripUpdate().getTrip().getRouteId().equals(incomingEntity.getTripUpdate().getTrip().getRouteId())){
-            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getRouteId() + " - " + incomingEntity.getTripUpdate().getTrip().getRouteId());
+            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getRouteId() + " - " + incomingEntity.getTripUpdate().getTrip().getRouteId());
         }
 
         if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())){
-            LOG.error("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
+            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
         }
 
         List<String> alreadySeenStops = new ArrayList<>();
