@@ -74,6 +74,8 @@ public class PubSubRoute extends RouteBuilder {
             ;
 
             from(siriSmTopic)
+                    .threads(200)
+                    .maxPoolSize(200)
                     .setHeader("type", simple("SIRI_SM"))
                     .wireTap("direct:log.incoming.data")
                     .to("direct:parse.siri.to.gtfs.rt.stop.monitoring")
