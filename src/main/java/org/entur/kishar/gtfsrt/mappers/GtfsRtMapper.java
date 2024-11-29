@@ -101,7 +101,7 @@ public class GtfsRtMapper {
             td.setRouteId(fvjRef.getLineRef().getValue());
         }
         if (fvjRef.hasFramedVehicleJourneyRef() && fvjRef.getFramedVehicleJourneyRef().hasDataFrameRef()){
-            td.setTripId(fvjRef.getFramedVehicleJourneyRef().getDataFrameRef().getValue());
+            td.setTripId(fvjRef.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef());
         }else{
             // no vehicleJourneyRef in siri. Using line/direction/time instead
             td.setRouteId(getLineRef(stopVisit));
@@ -407,16 +407,8 @@ public class GtfsRtMapper {
                     }
                 }
 
-                int stopSequence;
-                if (monitoredCalls.getOrder() > 0) {
-                    stopSequence = monitoredCalls.getOrder() - 1;
-                } else {
-                    stopSequence = stopCounter;
-                }
 
-
-
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,null,  tripUpdate, arrivalTime, departureTime, datasetId);
                 stopCounter++;
 
         }
@@ -525,7 +517,7 @@ public class GtfsRtMapper {
         return null;
     }
 
-    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, int stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected, String datasetId) {
+    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, Integer stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected, String datasetId) {
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
 
@@ -542,7 +534,10 @@ public class GtfsRtMapper {
             stopTimeUpdate.setDeparture(departureStopTimeEvent);
         }
 
-        stopTimeUpdate.setStopSequence(stopSequence);
+        if (stopSequence != null){
+            stopTimeUpdate.setStopSequence(stopSequence);
+        }
+
 
         stopTimeUpdate.setStopId(extractAndTransformStopId(datasetId, stopPointRef.getValue()));
 
