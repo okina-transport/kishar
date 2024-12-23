@@ -27,12 +27,10 @@ import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.entur.kishar.gtfsrt.mappers.GtfsRtMapper;
+import org.entur.kishar.gtfsrt.mappers.IdMapper;
 import org.entur.kishar.metrics.PrometheusMetricsService;
-import org.entur.kishar.utils.Utils;
-import org.entur.kishar.utils.subscription.SubscriptionConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
@@ -48,17 +46,24 @@ import static org.entur.kishar.utils.Constants.MAX_END_DATE;
 @Service
 @Configuration
 public class SiriToGtfsRealtimeService {
-    private static Logger LOG = LoggerFactory.getLogger(SiriToGtfsRealtimeService.class);
-
-    public static final String MONITORING_ERROR_NO_CURRENT_INFORMATION = "NO_CURRENT_INFORMATION";
-
-    public static final String MONITORING_ERROR_NOMINALLY_LOCATED = "NOMINALLY_LOCATED";
+    private static final Logger LOG = LoggerFactory.getLogger(SiriToGtfsRealtimeService.class);
 
     private static final String MEDIA_TYPE_APPLICATION_JSON = "application/json";
 
-    private AlertFactory alertFactory;
+    /**
+     * Time, in seconds, after which a vehicle update is considered stale
+     */
+    private static final int GRACE_PERIOD = 5 * 60;
 
-    private boolean newData = false;
+    private final AlertFactory alertFactory;
+
+    private final IdMapper idMapper;
+
+    private final GtfsRtMapper gtfsRtMapper;
+
+    private final PrometheusMetricsService prometheusMetricsService;
+
+    private final RedisService redisService;
 
     private List<String> datasourceETWhitelist;
 
@@ -66,25 +71,15 @@ public class SiriToGtfsRealtimeService {
 
     private List<String> datasourceSXWhitelist;
 
-    @Autowired
-    private PrometheusMetricsService prometheusMetricsService;
 
-    private RedisService redisService;
-
-    /**
-     * Time, in seconds, after which a vehicle update is considered stale
-     */
-    private static final int gracePeriod = 5 * 60;
     private Map<String, FeedMessage> tripUpdatesByDatasetId = Maps.newHashMap();
     private Map<String, FeedMessage> vehiclePositionsByDatasetId = Maps.newHashMap();
     private Map<String, FeedMessage> alertsByDatasetId = Maps.newHashMap();
 
-    private GtfsRtMapper gtfsMapper;
-
-    public SiriToGtfsRealtimeService(@Autowired AlertFactory alertFactory,
-                                     @Autowired RedisService redisService,
-                                     @Autowired Utils utils,
-                                     @Autowired SubscriptionConfig subscriptionConfig,
+    public SiriToGtfsRealtimeService(AlertFactory alertFactory,
+                                     RedisService redisService,
+                                     PrometheusMetricsService prometheusMetricsService,
+                                     IdMapper idMapper,
                                      @Value("${kishar.datasource.et.whitelist}") List<String> datasourceETWhitelist,
                                      @Value("${kishar.datasource.vm.whitelist}") List<String> datasourceVMWhitelist,
                                      @Value("${kishar.datasource.sx.whitelist}") List<String> datasourceSXWhitelist,
@@ -95,7 +90,9 @@ public class SiriToGtfsRealtimeService {
         this.datasourceSXWhitelist = datasourceSXWhitelist;
         this.alertFactory = alertFactory;
         this.redisService = redisService;
-        this.gtfsMapper = new GtfsRtMapper(utils, subscriptionConfig, closeToNextStopPercentage, closeToNextStopDistance);
+        this.idMapper = idMapper;
+        this.gtfsRtMapper = new GtfsRtMapper(closeToNextStopPercentage, closeToNextStopDistance);
+        this.prometheusMetricsService = prometheusMetricsService;
     }
 
     public void reset() {
@@ -127,7 +124,7 @@ public class SiriToGtfsRealtimeService {
             feedMessage = feedMessage.toBuilder().clearEntity().addAllEntity(feedMessage.getEntityList().stream()
                             .map(entity -> {
                                 FeedEntity.Builder entityBuilder = entity.toBuilder();
-                                mapTripUpdatesOriginalId(entityBuilder);
+                                mapTripUpdatesOriginalId(datasetId, entityBuilder);
                                 return entityBuilder.build();
                             })
                             .collect(Collectors.toList()))
@@ -136,7 +133,7 @@ public class SiriToGtfsRealtimeService {
             feedMessage = feedMessage.toBuilder().clearEntity().addAllEntity(feedMessage.getEntityList().stream()
                             .map(entity -> {
                                 FeedEntity.Builder entityBuilder = entity.toBuilder();
-                                mapTripUpdatesMobiitiId(entityBuilder, datasetId);
+                                mapTripUpdatesMobiitiId(datasetId, entityBuilder);
                                 return entityBuilder.build();
                             })
                             .collect(Collectors.toList()))
@@ -149,7 +146,11 @@ public class SiriToGtfsRealtimeService {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_VM", 1);
         }
-        FeedMessage feedMessage = vehiclePositionsByDatasetId.get(datasetId.toUpperCase());
+        FeedMessage feedMessage = null;
+        if (datasetId != null) {
+            feedMessage = vehiclePositionsByDatasetId.get(datasetId.toUpperCase());
+        }
+
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
         }
@@ -273,7 +274,6 @@ public class SiriToGtfsRealtimeService {
     }
 
     public void writeOutput() {
-        newData = false;
         long t1 = System.currentTimeMillis();
         writeTripUpdates();
         writeVehiclePositions();
@@ -479,7 +479,7 @@ public class SiriToGtfsRealtimeService {
                     for (VehicleActivityStructure activity : deliveryStructure.getVehicleActivityList()) {
                         try {
                             checkPreconditions(activity);
-                            VehiclePosition.Builder builder = gtfsMapper.convertSiriToGtfsRt(datasetId, activity);
+                            VehiclePosition.Builder builder = gtfsRtMapper.convertSiriToGtfsRt(datasetId, activity);
                             if (builder.getTimestamp() <= 0) {
                                 builder.setTimestamp(System.currentTimeMillis());
                             }
@@ -492,9 +492,9 @@ public class SiriToGtfsRealtimeService {
 
                             Duration timeToLive;
                             if (activity.hasValidUntilTime()) {
-                                timeToLive = Duration.newBuilder().setSeconds(Timestamps.between(SiriLibrary.getCurrentTime(), activity.getValidUntilTime()).getSeconds() + gracePeriod).build();
+                                timeToLive = Duration.newBuilder().setSeconds(Timestamps.between(SiriLibrary.getCurrentTime(), activity.getValidUntilTime()).getSeconds() + GRACE_PERIOD).build();
                             } else {
-                                timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
+                                timeToLive = Duration.newBuilder().setSeconds(GRACE_PERIOD).build();
                             }
 
                             result.put(new CompositeKey(key, datasetId).asString(),
@@ -531,7 +531,7 @@ public class SiriToGtfsRealtimeService {
                                 if (estimatedVehicleJourney != null) {
                                     try {
                                         checkPreconditions(estimatedVehicleJourney);
-                                        TripUpdate.Builder builder = gtfsMapper.mapTripUpdateFromVehicleJourney(datasetId, estimatedVehicleJourney);
+                                        TripUpdate.Builder builder = gtfsRtMapper.mapTripUpdateFromVehicleJourney(datasetId, estimatedVehicleJourney);
 
                                         FeedEntity.Builder entity = FeedEntity.newBuilder();
                                         String key = getTripIdForEstimatedVehicleJourney(estimatedVehicleJourney);
@@ -564,7 +564,7 @@ public class SiriToGtfsRealtimeService {
                                         }
                                         Duration timeToLive;
                                         if (expirationTime == null) {
-                                            timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
+                                            timeToLive = Duration.newBuilder().setSeconds(GRACE_PERIOD).build();
                                         } else {
                                             timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), expirationTime);
                                         }
@@ -605,7 +605,7 @@ public class SiriToGtfsRealtimeService {
 
                         try {
                             checkPreconditions(monitoredStopVisitStructure);
-                            TripUpdate.Builder builder = gtfsMapper.mapTripUpdateFromStopVisit(datasetId, monitoredStopVisitStructure);
+                            TripUpdate.Builder builder = gtfsRtMapper.mapTripUpdateFromStopVisit(datasetId, monitoredStopVisitStructure);
 
                             FeedEntity.Builder entity = FeedEntity.newBuilder();
                             String key = getKeyFromStopVisit(monitoredStopVisitStructure);
@@ -617,7 +617,7 @@ public class SiriToGtfsRealtimeService {
                             Duration timeToLive;
 
                             if (expirationTime == null) {
-                                timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
+                                timeToLive = Duration.newBuilder().setSeconds(GRACE_PERIOD).build();
                             } else {
                                 timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), expirationTime);
                             }
@@ -695,7 +695,7 @@ public class SiriToGtfsRealtimeService {
                                 }
                                 Duration timeToLive;
                                 if (endTime == null) {
-                                    timeToLive = Duration.newBuilder().setSeconds(gracePeriod).build();
+                                    timeToLive = Duration.newBuilder().setSeconds(GRACE_PERIOD).build();
                                 } else {
                                     timeToLive = Timestamps.between(SiriLibrary.getCurrentTime(), endTime);
                                 }
@@ -755,7 +755,7 @@ public class SiriToGtfsRealtimeService {
         entityBuilder.setAlert(updatedAlert);
     }
 
-    private void mapTripUpdatesMobiitiId(FeedEntity.Builder entityBuilder, String datasetId){
+    private void mapTripUpdatesMobiitiId(String datasetId, FeedEntity.Builder entityBuilder){
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = entityBuilder.getTripUpdateBuilder();
         if(tripUpdateBuilder.hasTrip() && tripUpdateBuilder.getTrip() != null) {
             if (tripUpdateBuilder.getTrip().hasRouteId() && StringUtils.hasLength(tripUpdateBuilder.getTrip().getRouteId())){
@@ -768,7 +768,11 @@ public class SiriToGtfsRealtimeService {
         }
         List<TripUpdate.StopTimeUpdate> updatedStopTimeUpdates = tripUpdateBuilder.getStopTimeUpdateBuilderList().stream()
                 .map(stopTimeUpdateBuilder -> {
-                    String updatedStopId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopTimeUpdateBuilder.getStopId());
+                    String transformedStopId = idMapper.applyIdProcessingParameters(datasetId, stopTimeUpdateBuilder.getStopId());
+                    String updatedStopId = redisService.readIdMap(RedisService.Type.ID_MAPPING, transformedStopId);
+                    if (updatedStopId == null) {
+                        updatedStopId = redisService.readIdMap(RedisService.Type.ID_MAPPING, transformedStopId.replace("Quay", "StopPlace"));
+                    }
                     return stopTimeUpdateBuilder.setStopId(updatedStopId != null ? updatedStopId : stopTimeUpdateBuilder.getStopId()).build();
                 })
                 .collect(Collectors.toList());
@@ -800,7 +804,7 @@ public class SiriToGtfsRealtimeService {
         GtfsRealtime.Alert updatedAlert = alertBuilder.clearInformedEntity().addAllInformedEntity(updatedEntities).build();
         entityBuilder.setAlert(updatedAlert);
     }
-    private void mapTripUpdatesOriginalId(FeedEntity.Builder entityBuilder){
+    private void mapTripUpdatesOriginalId(String datasetId, FeedEntity.Builder entityBuilder){
         GtfsRealtime.TripUpdate.Builder tripUpdateBuilder = entityBuilder.getTripUpdateBuilder();
         if(tripUpdateBuilder.hasTrip() && tripUpdateBuilder.getTrip() != null && tripUpdateBuilder.getTrip().hasRouteId()){
             String updatedId = returnOriginalId(tripUpdateBuilder.getTrip().getRouteId());
@@ -808,8 +812,8 @@ public class SiriToGtfsRealtimeService {
         }
         List<TripUpdate.StopTimeUpdate> updatedStopTimeUpdates = tripUpdateBuilder.getStopTimeUpdateBuilderList().stream()
                 .map(stopTimeUpdateBuilder -> {
-                    String updatedStopId = returnOriginalId(stopTimeUpdateBuilder.getStopId());
-                    return stopTimeUpdateBuilder.setStopId(updatedStopId).build();
+                    String transformedStopId = idMapper.applyIdProcessingParameters(datasetId, stopTimeUpdateBuilder.getStopId());
+                    return stopTimeUpdateBuilder.setStopId(transformedStopId).build();
                 })
                 .collect(Collectors.toList());
         GtfsRealtime.TripUpdate updatedTripUpdate = tripUpdateBuilder.clearStopTimeUpdate().addAllStopTimeUpdate(updatedStopTimeUpdates).build();

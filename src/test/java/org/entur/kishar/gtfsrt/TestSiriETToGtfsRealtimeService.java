@@ -8,26 +8,25 @@ import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
-import org.junit.Test;
-import org.junit.runners.model.InvalidTestClassError;
+import org.junit.jupiter.api.Test;
+import org.mockito.stubbing.Answer;
 import uk.org.siri.www.siri.*;
 
 import java.io.IOException;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.TestCase.*;
 import static org.entur.kishar.gtfsrt.Helper.createFramedVehicleJourneyRefStructure;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
+class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
-    public void testAsyncGtfsRtProduction() throws IOException {
+    void testAsyncGtfsRtProduction() throws IOException {
         String lineRefValue = "TST:Line:1234";
         int stopCount = 5;
         int delayPerStop = 30;
@@ -39,12 +38,16 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, false);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -58,7 +61,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
 
         feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
@@ -71,7 +74,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testAsyncGtfsRtProductionWithoutEstimates() throws IOException {
+    void testAsyncGtfsRtProductionWithoutEstimates() throws IOException {
         String lineRefValue = "TST:Line:1234";
         int stopCount = 5;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";
@@ -82,12 +85,16 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, false);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -101,7 +108,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
 
         feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
@@ -137,7 +144,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdate() throws IOException {
+    void testEtToTripUpdate() throws IOException {
 
         String lineRefValue = "1234";
         int stopCount = 5;
@@ -150,11 +157,15 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -202,9 +213,9 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdateFilterOnDatasetId() throws IOException {
+    void testEtToTripUpdateFilterOnDatasetId() {
         // Specifying local service for specific datasetId-testing
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
                 Lists.newArrayList("RUT", "BNR"), Lists.newArrayList(),
                 Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
@@ -224,11 +235,15 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         redisMap.putAll(siriBnrMap);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", "RUT", true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -243,7 +258,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         tripUpdates = localRtService.getTripUpdates("application/json", "BNR", true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         entityList = feedMessage.getEntityList();
@@ -258,7 +273,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         tripUpdates = localRtService.getTripUpdates("application/json", datasetId2, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         entityList = feedMessage.getEntityList();
@@ -268,8 +283,8 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdateNoWhitelist() throws IOException {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+    void testEtToTripUpdateNoWhitelist() {
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
                 Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
         String lineRefValue = "TST:Line:1234";
@@ -282,11 +297,15 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -302,8 +321,8 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testEtToTripUpdateOriginalId() throws IOException {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+    void testEtToTripUpdateOriginalId() {
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
                 Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
         String lineRefValue = "TST:Line:1234";
@@ -316,11 +335,15 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -332,12 +355,12 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         assertNotNull(tripUpdate);
 
         assertEquals(1, tripUpdate.getStopTimeUpdateCount());
-        assertEquals("1234-0", tripUpdate.getStopTimeUpdate(0).getStopId());
+        assertEquals("TST:Quay:1234-0", tripUpdate.getStopTimeUpdate(0).getStopId());
 
     }
     @Test
-    public void testEtToTripUpdateMobiitiId() throws IOException {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, utils, subscriptionConfig,
+    void testEtToTripUpdateMobiitiId() {
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
                 Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
 
         String lineRefValue = "TST:Line:1234";
@@ -350,6 +373,10 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         when(redisService.readIdMap(RedisService.Type.ID_MAPPING, "TST:Quay:1234-0")).thenReturn("MOBIITI:Quay:1234-0");
         when(redisService.readLineIdMap(RedisService.Type.ARE_FLEXIBLE_LINES, lineRefValue, datasetId)).thenReturn(lineRefValue);
 
@@ -357,7 +384,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, false);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -375,7 +402,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
 
     @Test
-    public void testEtToTripUpdateIgnoreDatasetIdNotInWhitelist() throws IOException {
+    void testEtToTripUpdateIgnoreDatasetIdNotInWhitelist() {
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -387,15 +414,19 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
     }
 
     @Test
-    public void testEtWithoutFramedVehicleRef() throws IOException {
+    void testEtWithoutFramedVehicleRef() {
         String lineRefValue = "TST:Line:1234";
         String datedVehicleJourneyRef = null;
         String datasetId = "RUT";
@@ -410,11 +441,15 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
+        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+            Object[] args = invocation.getArguments();
+            return (String) args[1];
+        });
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, false);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -436,7 +471,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
         assertNotNull(tripUpdates);
-        assertTrue(tripUpdates instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
 
         feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
         entityList = feedMessage.getEntityList();
@@ -445,7 +480,7 @@ public class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testMappingOfSiriEt() {
+    void testMappingOfSiriEt() {
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
         String datedVehicleJourneyRef = "TST:ServiceJourney:1234";

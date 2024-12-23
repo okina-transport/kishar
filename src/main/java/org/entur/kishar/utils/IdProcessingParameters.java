@@ -7,29 +7,21 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.Serializable;
 import java.util.Objects;
 
-
+@Getter
+@Setter
 public class IdProcessingParameters implements Serializable {
 
-    @Getter
-    @Setter
     private String datasetId;
-    @Getter
-    @Setter
+
     private ObjectType objectType;
-    @Getter
-    @Setter
+
     private String inputPrefixToRemove;
-    @Getter
-    @Setter
+
     private String inputSuffixToRemove;
-    @Getter
-    @Setter
+
     private String outputPrefixToAdd;
-    @Getter
-    @Setter
+
     private String outputSuffixToAdd;
-
-
 
     /**
      * Apply transformations defined in this class (prefix/suffix removal and after prefix/suffix add) to the input String

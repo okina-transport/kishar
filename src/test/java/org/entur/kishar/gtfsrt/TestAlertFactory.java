@@ -1,24 +1,24 @@
 package org.entur.kishar.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import uk.org.siri.www.siri.PtSituationElementStructure;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNotNull;
 import static org.entur.kishar.gtfsrt.Helper.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-public class TestAlertFactory {
+class TestAlertFactory {
     AlertFactory alertFactory;
 
-    @Before
-    public void init() {
+    @BeforeEach
+    void init() {
         alertFactory = new AlertFactory();
     }
 
     @Test
-    public void testCreateAlertFromSituation() {
+    void testCreateAlertFromSituation() {
 
         PtSituationElementStructure ptSituation = createPtSituationElement("RUT");
 
