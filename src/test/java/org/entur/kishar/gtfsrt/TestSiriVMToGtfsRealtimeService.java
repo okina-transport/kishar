@@ -7,24 +7,22 @@ import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import uk.org.siri.www.siri.*;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertTrue;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
+class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
 
     @Test
-    public void testIncomingAtPercentageVmToVehiclePosition() throws IOException {
+    void testIncomingAtPercentageVmToVehiclePosition() throws IOException {
 
         String stopPointRefValue = "TST:Quay:1234";
         String lineRefValue = "TST:Line:1234";
@@ -89,7 +87,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testIncomingAtDistanceVmToVehiclePosition() throws IOException {
+    void testIncomingAtDistanceVmToVehiclePosition() throws IOException {
 
         String stopPointRefValue = "TST:Quay:1234";
         String lineRefValue = "TST:Line:1234";
@@ -129,7 +127,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testInTransitVmToVehiclePosition() throws IOException {
+    void testInTransitVmToVehiclePosition() throws IOException {
 
         String stopPointRefValue = "TST:Quay:1234";
         String lineRefValue = "TST:Line:1234";
@@ -167,8 +165,9 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
     }
 
-
-    public void testVmToVehiclePositionWithDatasetIdFiltering() throws IOException {
+    @Test
+    @Disabled("Need to exit")
+    void testVmToVehiclePositionWithDatasetIdFiltering() throws IOException {
 
         String lineRefValue = "TST:Line:1234";
         double latitude = 10.56;
@@ -190,9 +189,9 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
         rtService.writeOutput();
 
-        Object vehiclePositions = rtService.getVehiclePositions("application/json", null);
+        Object vehiclePositions = rtService.getVehiclePositions("application/json", "TEST");
         assertNotNull(vehiclePositions);
-        assertTrue(vehiclePositions instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) vehiclePositions;
@@ -200,7 +199,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         assertFalse(entityList.isEmpty());
         assertEquals(1, entityList.size());
 
-        assertTrue(vehiclePositions instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
         assertEquals(1, ((GtfsRealtime.FeedMessage) vehiclePositions).getEntityCount());
         assertTrue(entityList.contains(((GtfsRealtime.FeedMessage) vehiclePositions).getEntity(0)));
 
@@ -216,7 +215,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testVmWithoutFramedVehicleRef() throws IOException {
+    void testVmWithoutFramedVehicleRef() {
 
         String lineRefValue = "TST:Line:1234";
         double latitude = 10.56;
@@ -234,20 +233,20 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId);
         assertNotNull(vehiclePositions);
-        assertTrue(vehiclePositions instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) vehiclePositions;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
 
 
-        assertTrue(vehiclePositions instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
         assertEquals(0, ((GtfsRealtime.FeedMessage) vehiclePositions).getEntityCount());
 
         assertTrue(entityList.isEmpty());
     }
 
     @Test
-    public void testMappingOfSiriVm() {
+    void testMappingOfSiriVm() {
 
         String stopPointRefValue = "TST:Quay:1234";
         String lineRefValue = "TST:Line:1234";
@@ -277,7 +276,7 @@ public class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     private GtfsRealtime.FeedMessage getFeedMessage(SiriToGtfsRealtimeService rtService, String datasetId) throws InvalidProtocolBufferException {
         Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId);
         assertNotNull(vehiclePositions);
-        assertTrue(vehiclePositions instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) vehiclePositions;

@@ -1,19 +1,10 @@
 package org.entur.kishar.gtfsrt.mappers;
 
 import com.google.protobuf.Timestamp;
-
-import com.google.transit.realtime.GtfsRealtime;
 import com.google.protobuf.util.Timestamps;
-import org.entur.kishar.utils.IdProcessingParameters;
-import org.entur.kishar.utils.ObjectType;
-import org.entur.kishar.utils.Utils;
-import org.entur.kishar.utils.subscription.SubscriptionConfig;
+import com.google.transit.realtime.GtfsRealtime;
 import org.springframework.util.StringUtils;
 import uk.org.siri.www.siri.*;
-import uk.org.siri.www.siri.FramedVehicleJourneyRefStructure;
-import uk.org.siri.www.siri.LocationStructure;
-import uk.org.siri.www.siri.MonitoredCallStructure;
-import uk.org.siri.www.siri.ProgressBetweenStopsStructure;
 
 import java.math.BigDecimal;
 import java.text.DateFormat;
@@ -21,24 +12,17 @@ import java.text.SimpleDateFormat;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
-import java.util.Map;
 
 
 public class GtfsRtMapper {
 
-    private final Utils utils;
-
-    private final SubscriptionConfig subscriptionConfig;
-
     private final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd");
     private final DateFormat gtfsRtTimeFormat = new SimpleDateFormat("HH:mm:ss");
 
-    private int closeToNextStopPercentage;
-    private int closeToNextStopDistance;
+    private final int closeToNextStopPercentage;
+    private final int closeToNextStopDistance;
 
-    public GtfsRtMapper(Utils utils, SubscriptionConfig subscriptionConfig, int closeToNextStopPercentage, int closeToNextStopDistance) {
-        this.utils = utils;
-        this.subscriptionConfig = subscriptionConfig;
+    public GtfsRtMapper(int closeToNextStopPercentage, int closeToNextStopDistance) {
         this.closeToNextStopPercentage = closeToNextStopPercentage;
         this.closeToNextStopDistance = closeToNextStopDistance;
     }
@@ -252,7 +236,7 @@ public class GtfsRtMapper {
                 }
 
                 if (monitoredCall.hasStopPointRef()) {
-                    vp.setStopId(extractAndTransformStopId(datasetId, monitoredCall.getStopPointRef().getValue()));
+                    vp.setStopId(monitoredCall.getStopPointRef().getValue());
                 }
 
                 vp.setCurrentStopSequence(monitoredCall.getOrder());
@@ -538,21 +522,10 @@ public class GtfsRtMapper {
             stopTimeUpdate.setStopSequence(stopSequence);
         }
 
-
-        stopTimeUpdate.setStopId(extractAndTransformStopId(datasetId, stopPointRef.getValue()));
+        stopTimeUpdate.setStopId(stopPointRef.getValue());
 
         tripUpdate.addStopTimeUpdate(stopTimeUpdate);
     }
 
 
-    /**
-     * Extract a stopId from a subscriptionSetup and transforms it, with idProcessingParams
-     *
-     * @return the transformed stop id
-     */
-    private String extractAndTransformStopId(String datasetId, String stopId) {
-        Map<String, IdProcessingParameters> idProcessingMap = utils.buildIdProcessingMap(datasetId, ObjectType.STOP);
-
-        return idProcessingMap.containsKey(datasetId) ? idProcessingMap.get(datasetId).applyTransformationToString(stopId) : stopId;
-    }
 }

@@ -3,7 +3,7 @@ package org.entur.kishar.gtfsrt;
 import com.google.common.collect.Maps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import uk.org.siri.www.siri.ServiceDeliveryType;
 import uk.org.siri.www.siri.SiriType;
 import uk.org.siri.www.siri.SituationExchangeDeliveryStructure;
@@ -12,17 +12,17 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
-import static junit.framework.TestCase.*;
 import static org.entur.kishar.gtfsrt.Helper.createPtSituationElement;
 import static org.entur.kishar.gtfsrt.Helper.createPtSituationElementWithoutEndDateValidityPeriod;
 import static org.entur.kishar.gtfsrt.TestAlertFactory.assertAlert;
 import static org.entur.kishar.utils.Constants.MAX_END_DATE;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
+class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
-    public void testSituationToAlert() throws IOException {
+    void testSituationToAlert() throws IOException {
         SiriType siri = createSiriSx("TEST");
 
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
@@ -31,7 +31,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         rtService.writeOutput();
         Object alerts = rtService.getAlerts("application/json", "TEST", false);
         assertNotNull(alerts);
-        assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) alerts;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -58,7 +58,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testSituationToAlertWithDatasetIdFiltering() throws IOException {
+    void testSituationToAlertWithDatasetIdFiltering() {
 
         String datasetId = "BNR";
         SiriType siri = createSiriSx(datasetId);
@@ -69,11 +69,11 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         rtService.writeOutput();
         Object alerts = rtService.getAlerts("application/json", "BNR", false);
         assertNotNull(alerts);
-        assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
     }
 
     @Test
-    public void testMappingOfSiriSx() {
+    void testMappingOfSiriSx() {
         String datasetId = "RUT";
 
         SiriType siri = createSiriSx(datasetId);
@@ -84,7 +84,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
     }
 
     @Test
-    public void testSituationToAlertWithDatasetIdFilteringWithoutEndDateValidityPeriod() throws IOException {
+    void testSituationToAlertWithDatasetIdFilteringWithoutEndDateValidityPeriod() throws IOException {
         SiriType siri = createSiriSxWithoutEndDateValidityPeriod("TEST");
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
@@ -92,7 +92,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         rtService.writeOutput();
         Object alerts = rtService.getAlerts("application/json", "TEST", false);
         assertNotNull(alerts);
-        assertTrue(alerts instanceof GtfsRealtime.FeedMessage);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
 
         GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) alerts;
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
@@ -106,7 +106,7 @@ public class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
         GtfsRealtime.Alert alert = entity.getAlert();
         assertNotNull(alert);
         assertAlert(alert);
-        assertEquals(feedMessage.getEntityList().get(0).getAlert().getActivePeriod(0).getEnd(), MAX_END_DATE);
+        assertEquals(MAX_END_DATE, feedMessage.getEntityList().get(0).getAlert().getActivePeriod(0).getEnd());
     }
 
     private SiriType createSiriSx(String datasetId) {

@@ -33,8 +33,6 @@ public class SubscriptionConfig {
 
     private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
 
-    public SubscriptionConfig() {}
-
     public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
         for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
             if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
@@ -46,6 +44,31 @@ public class SubscriptionConfig {
 
     public void setIdProcessingParameters(List<IdProcessingParameters> idProcessingParameters) {
         this.idProcessingParameters = idProcessingParameters;
+    }
+
+    public void mergeIdProcessingParams(List<IdProcessingParameters> incomingParams) {
+        for (IdProcessingParameters incomingParam : incomingParams) {
+            Optional<IdProcessingParameters> existingOpt = getExistingIdProc(incomingParam);
+            if (existingOpt.isPresent()) {
+                IdProcessingParameters existingIdProc = existingOpt.get();
+                existingIdProc.setInputPrefixToRemove(incomingParam.getInputPrefixToRemove());
+                existingIdProc.setInputSuffixToRemove(incomingParam.getInputSuffixToRemove());
+                existingIdProc.setOutputPrefixToAdd(incomingParam.getOutputPrefixToAdd());
+                existingIdProc.setOutputSuffixToAdd(incomingParam.getOutputSuffixToAdd());
+            } else {
+                idProcessingParameters.add(incomingParam);
+            }
+        }
+    }
+
+    private Optional<IdProcessingParameters> getExistingIdProc(IdProcessingParameters incomingParam) {
+        for (IdProcessingParameters idProcessingParameter : idProcessingParameters) {
+            if (idProcessingParameter.getDatasetId().equals(incomingParam.getDatasetId()) &&
+                    idProcessingParameter.getObjectType().equals(incomingParam.getObjectType())) {
+                return Optional.of(idProcessingParameter);
+            }
+        }
+        return Optional.empty();
     }
 }
 

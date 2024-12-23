@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "datasetId": "STAS",
+    "objectType": "LINE",
+    "inputPrefixToRemove": "",
+    "inputSuffixToRemove": "",
+    "outputPrefixToAdd": "",
+    "outputSuffixToAdd": ":LOC",
+    "updateDatetime": "2024-12-18T12:37:26.137+0000"
+  },
+  {
+    "id": 2,
+    "datasetId": "STAS",
+    "objectType": "VEHICLE_JOURNEY",
+    "inputPrefixToRemove": "STAS-VehicleJourney-",
+    "inputSuffixToRemove": "-LOC",
+    "outputPrefixToAdd": "STAS:ServiceJourney:",
+    "outputSuffixToAdd": ":LOC",
+    "updateDatetime": "2024-12-18T12:38:05.331+0000"
+  },
+  {
+    "id": 3,
+    "datasetId": "STAS",
+    "objectType": "STOP",
+    "inputPrefixToRemove": "STAS:StopPoint:BP:",
+    "inputSuffixToRemove": ":LOC",
+    "outputPrefixToAdd": "STAS:Quay:",
+    "outputSuffixToAdd": "",
+    "updateDatetime": "2024-12-18T12:38:45.909+0000"
+  }
+  ]
