@@ -240,16 +240,46 @@ public class RedisService {
         }
 
         List<String> alreadySeenStops = new ArrayList<>();
-        addStopUpdateTimes(mergedTripUpdate, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
-        addStopUpdateTimes(mergedTripUpdate, alreadySeenStops, incomingEntity.getTripUpdate().getStopTimeUpdateList());
+        List<GtfsRealtime.TripUpdate.StopTimeUpdate> mergedStopTimes = new ArrayList<>();
+        addStopUpdateTimes(mergedStopTimes, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
+        addStopUpdateTimes(mergedStopTimes, alreadySeenStops, incomingEntity.getTripUpdate().getStopTimeUpdateList());
+
+        // ordering stopTimeUpdates by departure/arrival/stopsequence or stopId by default
+        mergedStopTimes.sort(new StopTimeUpdateComparator());
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTime : mergedStopTimes) {
+            mergedTripUpdate.addStopTimeUpdate(stopTime);
+        }
+        
 
         return mergedTripUpdate.build();
     }
 
-    private void addStopUpdateTimes(GtfsRealtime.TripUpdate.Builder mergedTripUpdate, List<String> alreadySeenStops, List<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates){
+    class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpdate.StopTimeUpdate> {
+        @Override
+        public int compare(GtfsRealtime.TripUpdate.StopTimeUpdate stu1, GtfsRealtime.TripUpdate.StopTimeUpdate stu2) {
+            if (stu1 != null && stu1.getDeparture() != null && stu1.getDeparture().hasTime() &&
+                    stu2 != null && stu2.getDeparture() != null && stu2.getDeparture().hasTime()
+            ){
+                return Long.compare(stu1.getDeparture().getTime(), stu2.getDeparture().getTime());
+            }
+
+            if (stu1 != null && stu1.getArrival() != null && stu1.getArrival().hasTime() &&
+                    stu2 != null && stu2.getArrival() != null && stu2.getArrival().hasTime()
+            ){
+                return Long.compare(stu1.getArrival().getTime(), stu2.getArrival().getTime());
+            }
+
+            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
+                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());    
+            }
+            return stu1.getStopId().compareTo(stu2.getStopId());
+        }
+    }
+
+    private void addStopUpdateTimes(List<GtfsRealtime.TripUpdate.StopTimeUpdate> mergedStopTimes, List<String> alreadySeenStops, List<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates){
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : stopTimeUpdates) {
             if (!alreadySeenStops.contains(stopTimeUpdate.getStopId())){
-                mergedTripUpdate.addStopTimeUpdate(stopTimeUpdate);
+                mergedStopTimes.add(stopTimeUpdate);
                 alreadySeenStops.add(stopTimeUpdate.getStopId());
             }
         }
