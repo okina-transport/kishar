@@ -391,8 +391,12 @@ public class GtfsRtMapper {
                     }
                 }
 
+                Integer stopSequence = null;
+                if (monitoredCalls.getOrder() > 0){
+                    stopSequence = monitoredCalls.getOrder();
+                }
 
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,null,  tripUpdate, arrivalTime, departureTime, datasetId);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,stopSequence,  tripUpdate, arrivalTime, departureTime, datasetId);
                 stopCounter++;
 
         }

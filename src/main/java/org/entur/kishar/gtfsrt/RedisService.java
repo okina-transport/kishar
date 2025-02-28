@@ -241,13 +241,31 @@ public class RedisService {
 
         List<String> alreadySeenStops = new ArrayList<>();
         List<GtfsRealtime.TripUpdate.StopTimeUpdate> mergedStopTimes = new ArrayList<>();
-        addStopUpdateTimes(mergedStopTimes, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
+        List<GtfsRealtime.TripUpdate.StopTimeUpdate> filteredStopTimes = new LinkedList<>();
         addStopUpdateTimes(mergedStopTimes, alreadySeenStops, incomingEntity.getTripUpdate().getStopTimeUpdateList());
+        addStopUpdateTimes(mergedStopTimes, alreadySeenStops, existingEntity.getTripUpdate().getStopTimeUpdateList());
+
 
         // ordering stopTimeUpdates by departure/arrival/stopsequence or stopId by default
         mergedStopTimes.sort(new StopTimeUpdateComparator());
+
+        GtfsRealtime.TripUpdate.StopTimeUpdate previousStopTimeUpdate = null;
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTime : mergedStopTimes) {
-            mergedTripUpdate.addStopTimeUpdate(stopTime);
+            if (previousStopTimeUpdate == null) {
+                previousStopTimeUpdate = stopTime;
+                filteredStopTimes.add(stopTime);
+                continue;
+            }
+
+            if (stopTime.getArrival().getTime() > previousStopTimeUpdate.getArrival().getTime()) {
+                filteredStopTimes.add(stopTime);
+
+            }
+            previousStopTimeUpdate = stopTime;
+        }
+
+        for (GtfsRealtime.TripUpdate.StopTimeUpdate filteredStopTime : filteredStopTimes) {
+            mergedTripUpdate.addStopTimeUpdate(filteredStopTime);
         }
         
 
@@ -257,6 +275,10 @@ public class RedisService {
     class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpdate.StopTimeUpdate> {
         @Override
         public int compare(GtfsRealtime.TripUpdate.StopTimeUpdate stu1, GtfsRealtime.TripUpdate.StopTimeUpdate stu2) {
+            if (stu1.hasStopSequence() && stu2.hasStopSequence() ) {
+                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
+            }
+
             if (stu1 != null && stu1.getDeparture() != null && stu1.getDeparture().hasTime() &&
                     stu2 != null && stu2.getDeparture() != null && stu2.getDeparture().hasTime()
             ){
