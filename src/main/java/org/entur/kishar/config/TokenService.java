@@ -38,8 +38,13 @@ public class TokenService {
 
             keycloakClient = KeycloakBuilder.builder().clientId(clientId).clientSecret(clientSecret).realm(realm).serverUrl(authServerUrl).grantType("client_credentials").build();
         }
+        try{
+            return keycloakClient.tokenManager().getAccessTokenString();
+        }catch (Exception e){
+            log.error("Error while getting token. server:" + authServerUrl, e);
+            return "emptyToken";
+        }
 
-        return keycloakClient.tokenManager().getAccessTokenString();
     }
 
 }
