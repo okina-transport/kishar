@@ -4,8 +4,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.camel.builder.RouteBuilder;
+import org.entur.kishar.config.TokenService;
 import org.entur.kishar.utils.IdProcessingParameters;
 import org.entur.kishar.utils.subscription.SubscriptionConfig;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,9 @@ public class SynchronizationRoute extends RouteBuilder {
     @Value("${ishtar.synchronisation.interval:5000}")
     private String ishtarSynchronizationInitialDelay;
 
+    @Autowired
+    private TokenService tokenService;
+
     private final SubscriptionConfig subscriptionConfig;
 
     public SynchronizationRoute(SubscriptionConfig subscriptionConfig) {
@@ -45,6 +50,7 @@ public class SynchronizationRoute extends RouteBuilder {
                 .routeId("ISHTAR_SYNCHRONIZATION_ROUTE")
                 .setHeader("ishtarIdProcessingParametersResource", constant(ishtarUrl))
                 .setHeader("Accept", constant("application/json"))
+                .setHeader("Authorization", constant("Bearer " + tokenService.getToken()))
                 .toD("${header.ishtarIdProcessingParametersResource}")
                 .id("ishtarHttpGet")
                 .process(exchange -> {
