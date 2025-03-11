@@ -3,7 +3,9 @@ package org.entur.kishar.routes;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.entur.kishar.config.TokenService;
 import org.entur.kishar.utils.IdProcessingParameters;
 import org.entur.kishar.utils.subscription.SubscriptionConfig;
@@ -16,6 +18,7 @@ import java.util.List;
 
 @Service
 @Configuration
+@Slf4j
 public class SynchronizationRoute extends RouteBuilder {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -45,7 +48,7 @@ public class SynchronizationRoute extends RouteBuilder {
     }
 
     @Override
-    public void configure() throws Exception {
+    public void configure() {
         from("timer://ishtarSynchronization?period=" + ishtarSynchronizationInterval + "&delay=" + ishtarSynchronizationInitialDelay)
                 .routeId("ISHTAR_SYNCHRONIZATION_ROUTE")
                 .setHeader("ishtarIdProcessingParametersResource", constant(ishtarUrl))
@@ -54,9 +57,11 @@ public class SynchronizationRoute extends RouteBuilder {
                 .toD("${header.ishtarIdProcessingParametersResource}")
                 .id("ishtarHttpGet")
                 .process(exchange -> {
+                    log.info("Get id processing parameters from ISHTAR");
                     String rawJson = exchange.getIn().getBody(String.class);
                     List<IdProcessingParameters> ishtarIdProcessingParametersConfiguration = objectMapper.readValue(rawJson, new TypeReference<>() {
                     });
+                    log.info("Retrieved {} id processing parameters from ISHTAR", CollectionUtils.size(ishtarIdProcessingParametersConfiguration));
                     subscriptionConfig.mergeIdProcessingParams(ishtarIdProcessingParametersConfiguration);
                 });
     }
