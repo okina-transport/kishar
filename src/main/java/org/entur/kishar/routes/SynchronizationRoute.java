@@ -53,7 +53,7 @@ public class SynchronizationRoute extends RouteBuilder {
                 .routeId("ISHTAR_SYNCHRONIZATION_ROUTE")
                 .setHeader("ishtarIdProcessingParametersResource", constant(ishtarUrl))
                 .setHeader("Accept", constant("application/json"))
-                .setHeader("Authorization", constant("Bearer " + tokenService.getToken()))
+                .setHeader("Authorization", simple("Bearer " + tokenService.getToken()))
                 .toD("${header.ishtarIdProcessingParametersResource}")
                 .id("ishtarHttpGet")
                 .process(exchange -> {
