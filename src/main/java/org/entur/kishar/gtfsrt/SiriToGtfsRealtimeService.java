@@ -25,6 +25,7 @@ import com.google.transit.realtime.GtfsRealtime;
 import com.google.transit.realtime.GtfsRealtime.*;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
+import org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.entur.kishar.gtfsrt.mappers.GtfsRtMapper;
 import org.entur.kishar.gtfsrt.mappers.IdMapper;
@@ -38,6 +39,7 @@ import org.springframework.util.StringUtils;
 import uk.org.siri.www.siri.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary.createFeedMessageBuilder;
@@ -56,25 +58,16 @@ public class SiriToGtfsRealtimeService {
     private static final int GRACE_PERIOD = 5 * 60;
 
     private final AlertFactory alertFactory;
-
     private final IdMapper idMapper;
-
     private final GtfsRtMapper gtfsRtMapper;
-
     private final PrometheusMetricsService prometheusMetricsService;
-
     private final RedisService redisService;
-
     private List<String> datasourceETWhitelist;
-
     private List<String> datasourceVMWhitelist;
-
     private List<String> datasourceSXWhitelist;
-
-
-    private Map<String, FeedMessage> tripUpdatesByDatasetId = Maps.newHashMap();
-    private Map<String, FeedMessage> vehiclePositionsByDatasetId = Maps.newHashMap();
-    private Map<String, FeedMessage> alertsByDatasetId = Maps.newHashMap();
+    private final Map<String, FeedMessage> tripUpdatesByDatasetId = new ConcurrentHashMap<>();
+    private final Map<String, FeedMessage> vehiclePositionsByDatasetId = new ConcurrentHashMap<>();
+    private final Map<String, FeedMessage> alertsByDatasetId = new ConcurrentHashMap<>();
 
     public SiriToGtfsRealtimeService(AlertFactory alertFactory,
                                      RedisService redisService,
@@ -95,6 +88,13 @@ public class SiriToGtfsRealtimeService {
         this.prometheusMetricsService = prometheusMetricsService;
     }
 
+    public void clearGtfsRtCache() {
+        LOG.warn("Clear all GTFS-RT data");
+        tripUpdatesByDatasetId.clear();
+        vehiclePositionsByDatasetId.clear();
+        alertsByDatasetId.clear();
+    }
+
     public void reset() {
         LOG.warn("Resetting ALL data");
         redisService.resetAllData();
@@ -102,12 +102,9 @@ public class SiriToGtfsRealtimeService {
 
     public String getStatus() {
         ArrayList<String> status = new ArrayList<>();
-        status.add("tripUpdates: " + (int) tripUpdatesByDatasetId.values().stream()
-                .map(FeedMessage::getEntityList).count());
-        status.add("vehiclePositions: " +(int) vehiclePositionsByDatasetId.values().stream()
-                .map(FeedMessage::getEntityList).count());
-        status.add("alerts: " + (int) alertsByDatasetId.values().stream()
-                .map(FeedMessage::getEntityList).count());
+        status.add("tripUpdates: " + tripUpdatesByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum());
+        status.add("vehiclePositions: " +vehiclePositionsByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum());
+        status.add("alerts: " + alertsByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum());
         return status.toString();
     }
 
@@ -161,7 +158,9 @@ public class SiriToGtfsRealtimeService {
         if (prometheusMetricsService != null) {
             prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
         }
-        FeedMessage feedMessage = alertsByDatasetId.get(datasetId.toUpperCase());
+
+        FeedMessage feedMessage;
+        feedMessage = alertsByDatasetId.get(datasetId.toUpperCase());
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
         }
@@ -322,8 +321,8 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderByDatasource.addEntity(entity);
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
-
-        setTripUpdates(buildFeedMessageMap(feedMessageBuilderMap));
+        this.tripUpdatesByDatasetId.clear();
+        this.tripUpdatesByDatasetId.putAll(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     private Map<String, FeedMessage> buildFeedMessageMap(Map<String, FeedMessage.Builder> feedMessageBuilderMap) {
@@ -409,7 +408,8 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
 
-        setVehiclePositions(buildFeedMessageMap(feedMessageBuilderMap));
+        this.vehiclePositionsByDatasetId.clear();
+        this.vehiclePositionsByDatasetId.putAll(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     private String getVehicleIdForKey(TripAndVehicleKey key) {
@@ -450,19 +450,8 @@ public class SiriToGtfsRealtimeService {
             feedMessageBuilderMap.put(datasource, feedMessageBuilderByDatasource);
         }
 
-        setAlerts(buildFeedMessageMap(feedMessageBuilderMap));
-    }
-
-    public void setTripUpdates(Map<String, FeedMessage> tripUpdatesByDatasource) {
-        this.tripUpdatesByDatasetId = tripUpdatesByDatasource;
-    }
-
-    public void setVehiclePositions(Map<String, FeedMessage> vehiclePositionsByDatasource) {
-        this.vehiclePositionsByDatasetId = vehiclePositionsByDatasource;
-    }
-
-    public void setAlerts(Map<String, FeedMessage> alertsByDatasource) {
-        this.alertsByDatasetId = alertsByDatasource;
+        this.alertsByDatasetId.clear();
+        this.alertsByDatasetId.putAll(buildFeedMessageMap(feedMessageBuilderMap));
     }
 
     public Map<String, GtfsRtData> convertSiriVmToGtfsRt(SiriType siri, String datasetId) {
@@ -827,4 +816,14 @@ public class SiriToGtfsRealtimeService {
         }
         return triId;
     }
+
+    public void clearCacheByDatasetId(String datasetId) {
+        LOG.info("Clear cache for datasetId {}", datasetId);
+
+        alertsByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        tripUpdatesByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        vehiclePositionsByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        redisService.clearByDatasetId(datasetId);
+    }
+
 }

@@ -4,11 +4,12 @@ import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.utils.BlobStoreService;
 import org.redisson.Redisson;
-
 import org.redisson.api.RMapCache;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.ByteArrayCodec;
@@ -16,94 +17,75 @@ import org.redisson.client.codec.StringCodec;
 import org.redisson.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Configuration
+@Slf4j
 public class RedisService {
 
-
-    enum Type {
-        VEHICLE_POSITION("vehiclePositionMap"),
-        TRIP_UPDATE("tripUpdateMap"),
-        ALERT("alertMap"),
-        ARE_FLEXIBLE_LINES("areFlexibleLines"),
-        ID_MAPPING("idMap");
-
-        private String mapIdentifier;
-
-        Type(String mapIdentifier) {
-            this.mapIdentifier = mapIdentifier;
-        }
-
-        public String getMapIdentifier() {
-            return mapIdentifier;
-        }
-    }
-
-    private static Logger LOG = LoggerFactory.getLogger(RedisService.class);
-
-    @Value("${kishar.mapping.stopplaces.update.frequency.min:60}")
-    private int updateFrequency = 60;
-
-    @Value("${kishar.mapping.quays.gcs.path}")
-    private String quayMappingPath;
-
-    @Value("${kishar.mapping.stopplaces.gcs.path}")
-    private String stopPlaceMappingPath;
-
-    @Value("${kishar.lineIds.file}")
-    private String lineMappingPath;
-
-    @Autowired
-    BlobStoreService blobStoreService;
-
-    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private static final Logger LOG = LoggerFactory.getLogger(RedisService.class);
+    private final String quayMappingPath;
+    private final String stopPlaceMappingPath;
+    private final String lineMappingPath;
     private final boolean redisEnabled;
+    private final BlobStoreService blobStoreService;
+    private final RedissonClient redisson;
 
-    RedissonClient redisson;
-
-    public RedisService(@Value("${kishar.redis.enabled:false}") boolean redisEnabled, @Value("${kishar.redis.host:}") String host, @Value("${kishar.redis.port:}") String port) {
+    public RedisService(@Value("${kishar.redis.enabled:false}") boolean redisEnabled, @Value("${kishar.redis.host:}") String host, @Value("${kishar.redis.port:}") String port, @Value("${kishar.mapping.stopplaces.update.frequency.min:60}") int updateFrequency, @Value("${kishar.mapping.quays.gcs.path}") String quayMappingPath, @Value("${kishar.mapping.stopplaces.gcs.path}") String stopPlaceMappingPath, @Value("${kishar.lineIds.file}") String lineMappingPath, BlobStoreService blobStoreService) {
         this.redisEnabled = redisEnabled;
+        this.quayMappingPath = quayMappingPath;
+        this.stopPlaceMappingPath = stopPlaceMappingPath;
+        this.lineMappingPath = lineMappingPath;
+        this.blobStoreService = blobStoreService;
 
         if (redisEnabled) {
             LOG.info("redis url = " + host + ":" + port);
             Config config = new Config();
-            config.useReplicatedServers()
-                    .addNodeAddress("redis://" + host + ":" + port);
+            config.useReplicatedServers().addNodeAddress("redis://" + host + ":" + port);
 
             redisson = Redisson.create(config);
 
-            executor.scheduleAtFixedRate(this::updateIdMapping, 1, updateFrequency, TimeUnit.MINUTES);        }
+            ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+            executor.scheduleAtFixedRate(this::updateIdMapping, 1, updateFrequency, TimeUnit.MINUTES);
+        } else {
+            redisson = null;
+        }
     }
 
     public void resetAllData() {
-        LOG.info("Before - VEHICLE_POSITION: " + redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).size());
+        if (!redisEnabled) {
+            return;
+        }
+        LOG.info("Before - VEHICLE_POSITION: {}", redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).size());
         redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).clear();
-        LOG.info("After - VEHICLE_POSITION: " + redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).size());
+        LOG.info("After - VEHICLE_POSITION: {}", redisson.getMap(Type.VEHICLE_POSITION.mapIdentifier).size());
 
-        LOG.info("Before - TRIP_UPDATE: " + redisson.getMap(Type.TRIP_UPDATE.mapIdentifier).size());
+        LOG.info("Before - TRIP_UPDATE: {}", redisson.getMap(Type.TRIP_UPDATE.mapIdentifier).size());
         redisson.getMap(Type.TRIP_UPDATE.mapIdentifier).clear();
-        LOG.info("After - TRIP_UPDATE: " + redisson.getMap(Type.TRIP_UPDATE.mapIdentifier).size());
+        LOG.info("After - TRIP_UPDATE: {}", redisson.getMap(Type.TRIP_UPDATE.mapIdentifier).size());
 
-        LOG.info("Before - ALERT: " + redisson.getMap(Type.ALERT.mapIdentifier).size());
+        LOG.info("Before - ALERT: {}", redisson.getMap(Type.ALERT.mapIdentifier).size());
         redisson.getMap(Type.ALERT.mapIdentifier).clear();
-        LOG.info("After - ALERT: " + redisson.getMap(Type.ALERT.mapIdentifier).size());
+        LOG.info("After - ALERT: {}", redisson.getMap(Type.ALERT.mapIdentifier).size());
 
-        LOG.info("Before - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+        LOG.info("Before - ID_MAPPING: {}", redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
         redisson.getMap(Type.ID_MAPPING.mapIdentifier).clear();
-        LOG.info("After - ID_MAPPING: " + redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+        LOG.info("After - ID_MAPPING: {}", redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
 
-        LOG.info("Before - ARE_FLEXIBLE_LINES: " + redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
+        LOG.info("Before - ARE_FLEXIBLE_LINES: {}", redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
         redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).clear();
-        LOG.info("After - ARE_FLEXIBLE_LINES: " + redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
+        LOG.info("After - ARE_FLEXIBLE_LINES: {}", redisson.getMap(Type.ARE_FLEXIBLE_LINES.mapIdentifier).size());
     }
 
     private void updateIdMapping() {
@@ -112,7 +94,7 @@ public class RedisService {
         updateLineIdMapping(lineMappingPath);
     }
 
-    private void idMapping(String csvFilePath){
+    private void idMapping(String csvFilePath) {
 
         final InputStream blob = blobStoreService.getBlob(csvFilePath);
 
@@ -160,19 +142,20 @@ public class RedisService {
     }
 
     public void writeGtfsRt(Map<String, GtfsRtData> gtfsRt, Type type) {
-        if (redisEnabled) {
-            RMapCache<byte[], byte[]> gtfsRtMap = redisson.getMapCache(type.getMapIdentifier(), ByteArrayCodec.INSTANCE);
-            for (String key : gtfsRt.keySet()) {
-                GtfsRtData gtfsRtData = gtfsRt.get(key);
-                long timeToLive = gtfsRtData.getTimeToLive().getSeconds();
-                if (timeToLive > 0) {
-                    if (Type.TRIP_UPDATE.equals(type)) {
-                        mergeTripUpdatesAndsave(key.getBytes(), gtfsRtData.getData(), timeToLive);
-                    } else {
-                        gtfsRtMap.put(key.getBytes(), gtfsRtData.getData(), timeToLive, TimeUnit.SECONDS);
-                    }
-
+        if (!redisEnabled) {
+            return;
+        }
+        RMapCache<byte[], byte[]> gtfsRtMap = redisson.getMapCache(type.getMapIdentifier(), ByteArrayCodec.INSTANCE);
+        for (String key : gtfsRt.keySet()) {
+            GtfsRtData gtfsRtData = gtfsRt.get(key);
+            long timeToLive = gtfsRtData.getTimeToLive().getSeconds();
+            if (timeToLive > 0) {
+                if (Type.TRIP_UPDATE.equals(type)) {
+                    mergeTripUpdatesAndsave(key.getBytes(), gtfsRtData.getData(), timeToLive);
+                } else {
+                    gtfsRtMap.put(key.getBytes(), gtfsRtData.getData(), timeToLive, TimeUnit.SECONDS);
                 }
+
             }
         }
     }
@@ -212,7 +195,7 @@ public class RedisService {
 
                 Duration timeToLiveDur = Duration.newBuilder().setSeconds(timeToLive).build();
                 GtfsRtData mergedGtfsData = new GtfsRtData(mergedEntity.build().toByteArray(), timeToLiveDur);
-                gtfsRtMap.put(key, mergedGtfsData.getData() , timeToLive, TimeUnit.SECONDS);
+                gtfsRtMap.put(key, mergedGtfsData.getData(), timeToLive, TimeUnit.SECONDS);
             }
 
         } catch (InvalidProtocolBufferException e) {
@@ -227,15 +210,15 @@ public class RedisService {
         mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
         mergedTripUpdate.setVehicle(existingEntity.getTripUpdate().getVehicle());
 
-        if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())){
+        if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())) {
             LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
         }
 
-        if (!existingEntity.getTripUpdate().getTrip().getRouteId().equals(incomingEntity.getTripUpdate().getTrip().getRouteId())){
+        if (!existingEntity.getTripUpdate().getTrip().getRouteId().equals(incomingEntity.getTripUpdate().getTrip().getRouteId())) {
             LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getRouteId() + " - " + incomingEntity.getTripUpdate().getTrip().getRouteId());
         }
 
-        if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())){
+        if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())) {
             LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
         }
 
@@ -267,40 +250,14 @@ public class RedisService {
         for (GtfsRealtime.TripUpdate.StopTimeUpdate filteredStopTime : filteredStopTimes) {
             mergedTripUpdate.addStopTimeUpdate(filteredStopTime);
         }
-        
+
 
         return mergedTripUpdate.build();
     }
 
-    class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpdate.StopTimeUpdate> {
-        @Override
-        public int compare(GtfsRealtime.TripUpdate.StopTimeUpdate stu1, GtfsRealtime.TripUpdate.StopTimeUpdate stu2) {
-            if (stu1.hasStopSequence() && stu2.hasStopSequence() ) {
-                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
-            }
-
-            if (stu1 != null && stu1.getDeparture() != null && stu1.getDeparture().hasTime() &&
-                    stu2 != null && stu2.getDeparture() != null && stu2.getDeparture().hasTime()
-            ){
-                return Long.compare(stu1.getDeparture().getTime(), stu2.getDeparture().getTime());
-            }
-
-            if (stu1 != null && stu1.getArrival() != null && stu1.getArrival().hasTime() &&
-                    stu2 != null && stu2.getArrival() != null && stu2.getArrival().hasTime()
-            ){
-                return Long.compare(stu1.getArrival().getTime(), stu2.getArrival().getTime());
-            }
-
-            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
-                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());    
-            }
-            return stu1.getStopId().compareTo(stu2.getStopId());
-        }
-    }
-
-    private void addStopUpdateTimes(List<GtfsRealtime.TripUpdate.StopTimeUpdate> mergedStopTimes, List<String> alreadySeenStops, List<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates){
+    private void addStopUpdateTimes(List<GtfsRealtime.TripUpdate.StopTimeUpdate> mergedStopTimes, List<String> alreadySeenStops, List<GtfsRealtime.TripUpdate.StopTimeUpdate> stopTimeUpdates) {
         for (GtfsRealtime.TripUpdate.StopTimeUpdate stopTimeUpdate : stopTimeUpdates) {
-            if (!alreadySeenStops.contains(stopTimeUpdate.getStopId())){
+            if (!alreadySeenStops.contains(stopTimeUpdate.getStopId())) {
                 mergedStopTimes.add(stopTimeUpdate);
                 alreadySeenStops.add(stopTimeUpdate.getStopId());
             }
@@ -349,10 +306,55 @@ public class RedisService {
 
     public String readLineIdMap(Type type, String key, String datasetId) {
         String isFlexibleLine = readBooleanMap(type, key, datasetId);
-        if("true".equals(isFlexibleLine)){
-            return datasetId.toUpperCase() + ":FlexibleLine:"+ key;
+        if ("true".equals(isFlexibleLine)) {
+            return datasetId.toUpperCase() + ":FlexibleLine:" + key;
         } else {
             return datasetId.toUpperCase() + ":Line:" + key;
         }
     }
+
+    public void clearByDatasetId(String datasetId) {
+        if (!redisEnabled) {
+            return;
+        }
+        for (Type type : List.of(Type.TRIP_UPDATE, Type.VEHICLE_POSITION, Type.ALERT)) {
+            log.info("Clear REDIS map {} for datasetId {}", type.getMapIdentifier(), datasetId);
+            redisson.getMap(type.getMapIdentifier()).fastRemove(datasetId);
+        }
+    }
+
+    @Getter
+    public enum Type {
+        VEHICLE_POSITION("vehiclePositionMap"), TRIP_UPDATE("tripUpdateMap"), ALERT("alertMap"), ARE_FLEXIBLE_LINES("areFlexibleLines"), ID_MAPPING("idMap");
+
+        private final String mapIdentifier;
+
+        Type(String mapIdentifier) {
+            this.mapIdentifier = mapIdentifier;
+        }
+
+    }
+
+    class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpdate.StopTimeUpdate> {
+        @Override
+        public int compare(GtfsRealtime.TripUpdate.StopTimeUpdate stu1, GtfsRealtime.TripUpdate.StopTimeUpdate stu2) {
+            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
+                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
+            }
+
+            if (stu1 != null && stu1.getDeparture() != null && stu1.getDeparture().hasTime() && stu2 != null && stu2.getDeparture() != null && stu2.getDeparture().hasTime()) {
+                return Long.compare(stu1.getDeparture().getTime(), stu2.getDeparture().getTime());
+            }
+
+            if (stu1 != null && stu1.getArrival() != null && stu1.getArrival().hasTime() && stu2 != null && stu2.getArrival() != null && stu2.getArrival().hasTime()) {
+                return Long.compare(stu1.getArrival().getTime(), stu2.getArrival().getTime());
+            }
+
+            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
+                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
+            }
+            return stu1.getStopId().compareTo(stu2.getStopId());
+        }
+    }
+
 }

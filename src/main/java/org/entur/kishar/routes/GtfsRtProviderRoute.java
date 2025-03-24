@@ -41,6 +41,7 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
                 .get("alerts/{" + PARAM_DATASET_ID + "}").to("direct:getAlerts").produces("application/octet-stream").id("kishar.alerts")
                 .get("debug/status").to("direct:getStatus").produces("application/text").id("kishar.status")
                 .get("debug/reset").to("direct:reset").produces("application/text").id("kishar.status")
+                .delete("dataset/{" + PARAM_DATASET_ID + "}").to("direct:clearCacheByDatasetId").id("kishar.clearCacheByDatasetId")
         ;
 
 
@@ -86,6 +87,11 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
                 .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasetId},${header.useOriginalId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=alerts.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
+        ;
+
+        from("direct:clearCacheByDatasetId")
+            .routeId("kishar.clearCacheByDatasetId")
+            .process(e -> siriToGtfsRealtimeService.clearCacheByDatasetId(e.getIn().getHeader(PARAM_DATASET_ID,String.class)))
         ;
 
         from("timer://kishar.update.output?fixedRate=true&period=10s")

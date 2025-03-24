@@ -3,7 +3,9 @@ package org.entur.kishar.gtfsrt;
 
 import com.google.transit.realtime.GtfsRealtime;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 
@@ -14,19 +16,15 @@ import java.time.ZonedDateTime;
 
 import static org.junit.Assert.assertEquals;
 
-public class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
+class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
 
-    @Value("${kishar.redis.enabled:false}") boolean redisEnabled;
-
-    @Value("${kishar.redis.host:}") String host;
-
-    @Value("${kishar.redis.port:}") String port;
+    @Autowired
+    RedisService tested;
 
 
     @Test
-    public void trip_updates_have_been_ordered_on_merge() throws IOException {
+    void trip_updates_have_been_ordered_on_merge() throws IOException {
 
-        RedisService redisService1 = new RedisService(redisEnabled, host, port);
 
         ZonedDateTime arrival = ZonedDateTime.of(2055, 8, 20, 12, 0, 0, 0, ZoneOffset.UTC);
         ZonedDateTime departure = ZonedDateTime.of(2055, 8, 20, 12, 0, 30, 0, ZoneOffset.UTC);
@@ -38,13 +36,13 @@ public class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
 
         // Simulating that STOP2(12h10) was integrated before. It's the existing Entity.
         // STOP1(12h00) is the new incoming tripUpdate
-        GtfsRealtime.TripUpdate mergedTrip = redisService1.buildMergedTripUpdate(incomingEntity, existing);
+        GtfsRealtime.TripUpdate mergedTrip = tested.buildMergedTripUpdate(incomingEntity, existing);
         System.out.println("mergedTrip: " + mergedTrip);
 
         // Expected : trip updates have been ordered and STOP1 is before STOP2
 
-        assertEquals(mergedTrip.getStopTimeUpdate(0).getStopId(), "STOP1");
-        assertEquals(mergedTrip.getStopTimeUpdate(1).getStopId(), "STOP2");
+        Assertions.assertEquals("STOP1", mergedTrip.getStopTimeUpdate(0).getStopId());
+        Assertions.assertEquals("STOP2", mergedTrip.getStopTimeUpdate(1).getStopId());
 
 
     }
@@ -74,12 +72,10 @@ public class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTe
                 .addStopTimeUpdate(stu1)
                 .build();
 
-        GtfsRealtime.FeedEntity result = GtfsRealtime.FeedEntity.newBuilder()
+        return GtfsRealtime.FeedEntity.newBuilder()
                 .setId("Id1")
                 .setTripUpdate(t1)
                 .build();
-
-        return result;
     }
 
 }

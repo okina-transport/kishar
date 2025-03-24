@@ -71,8 +71,6 @@ public abstract class SiriToGtfsRealtimeServiceTest {
     @AfterEach
     void cleanup() {
         //Deletes all received data
-        rtService.setAlerts(new HashMap<>());
-        rtService.setVehiclePositions(new HashMap<>());
-        rtService.setTripUpdates(new HashMap<>());
+       rtService.clearGtfsRtCache();
     }
 }
