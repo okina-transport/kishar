@@ -820,9 +820,9 @@ public class SiriToGtfsRealtimeService {
     public void clearCacheByDatasetId(String datasetId) {
         LOG.info("Clear cache for datasetId {}", datasetId);
 
-        alertsByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
-        tripUpdatesByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
-        vehiclePositionsByDatasetId.putIfAbsent(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        alertsByDatasetId.replace(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        tripUpdatesByDatasetId.replace(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
+        vehiclePositionsByDatasetId.replace(datasetId, GtfsRealtimeLibrary.createFeedMessageBuilder().build());
         redisService.clearByDatasetId(datasetId);
     }
 
