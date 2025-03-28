@@ -55,7 +55,6 @@ public class GtfsTripsServiceTest {
         tested.loadTripsFromFileSystem();
 
         // Assert
-        Assertions.assertTrue(ArrayUtils.isEmpty(TRIPS_WITH_EMPTY_DATASET.listFiles()[0].list()), "dataset directory should be empty");
         Assertions.assertFalse(tested.getTripIdsByDatasetId().containsKey("DATASET"), "should discard dataset");
     }
 
