@@ -13,22 +13,29 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import java.util.HashMap;
 import java.util.List;
 
 
 @ExtendWith(SpringExtension.class)
 @Configuration
-@SpringBootTest(webEnvironment= SpringBootTest.WebEnvironment.MOCK, classes = App.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK, classes = App.class)
 public abstract class SiriToGtfsRealtimeServiceTest {
 
+    protected SiriToGtfsRealtimeService rtService;
+    @Mock
+    protected RedisService redisService;
+    @Mock
+    protected PrometheusMetricsService prometheusMetricsService;
+    @Mock
+    protected IdMapper idMapper;
+    @Mock
+    protected SubscriptionConfig subscriptionConfig;
+    @Mock
+    protected GtfsTripsService gtfsTripsService;
     @Value("${kishar.settings.vm.close.to.stop.percentage}")
     int NEXT_STOP_PERCENTAGE;
-
     @Value("${kishar.settings.vm.close.to.stop.distance}")
     int NEXT_STOP_DISTANCE;
-
-
     @Value("${kishar.datasource.et.whitelist}")
     List<String> datasourceETWhitelist;
     @Value("${kishar.datasource.vm.whitelist}")
@@ -40,21 +47,6 @@ public abstract class SiriToGtfsRealtimeServiceTest {
     @Value("${kishar.settings.vm.close.to.stop.distance}")
     int closeToNextStopDistance;
 
-
-    protected SiriToGtfsRealtimeService rtService;
-
-    @Mock
-    protected RedisService redisService;
-
-    @Mock
-    protected PrometheusMetricsService prometheusMetricsService;
-
-    @Mock
-    protected IdMapper idMapper;
-
-    @Mock
-    protected SubscriptionConfig subscriptionConfig;
-
     @BeforeEach
     void before() {
         rtService = new SiriToGtfsRealtimeService(new AlertFactory(),
@@ -65,12 +57,13 @@ public abstract class SiriToGtfsRealtimeServiceTest {
                 datasourceVMWhitelist,
                 datasourceSXWhitelist,
                 closeToNextStopPercentage,
-                closeToNextStopDistance);
+                closeToNextStopDistance,
+                gtfsTripsService);
     }
 
     @AfterEach
     void cleanup() {
         //Deletes all received data
-       rtService.clearGtfsRtCache();
+        rtService.clearGtfsRtCache();
     }
 }

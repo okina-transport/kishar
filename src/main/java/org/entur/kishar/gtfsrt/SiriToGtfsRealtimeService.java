@@ -68,6 +68,7 @@ public class SiriToGtfsRealtimeService {
     private final List<String> datasourceETWhitelist;
     private final List<String> datasourceVMWhitelist;
     private final List<String> datasourceSXWhitelist;
+    private final GtfsTripsService gtfsTripsService;
 
     public SiriToGtfsRealtimeService(AlertFactory alertFactory,
                                      RedisService redisService,
@@ -77,7 +78,7 @@ public class SiriToGtfsRealtimeService {
                                      @Value("${kishar.datasource.vm.whitelist}") List<String> datasourceVMWhitelist,
                                      @Value("${kishar.datasource.sx.whitelist}") List<String> datasourceSXWhitelist,
                                      @Value("${kishar.settings.vm.close.to.stop.percentage}") int closeToNextStopPercentage,
-                                     @Value("${kishar.settings.vm.close.to.stop.distance}") int closeToNextStopDistance) {
+                                     @Value("${kishar.settings.vm.close.to.stop.distance}") int closeToNextStopDistance, GtfsTripsService gtfsTripsService) {
         this.datasourceETWhitelist = datasourceETWhitelist;
         this.datasourceVMWhitelist = datasourceVMWhitelist;
         this.datasourceSXWhitelist = datasourceSXWhitelist;
@@ -86,6 +87,7 @@ public class SiriToGtfsRealtimeService {
         this.idMapper = idMapper;
         this.gtfsRtMapper = new GtfsRtMapper(closeToNextStopPercentage, closeToNextStopDistance);
         this.prometheusMetricsService = prometheusMetricsService;
+        this.gtfsTripsService = gtfsTripsService;
     }
 
     public void clearGtfsRtCache() {
@@ -253,6 +255,38 @@ public class SiriToGtfsRealtimeService {
         Preconditions.checkState(fvjRef.hasDataFrameRef(), "DataFrameRef");
         Preconditions.checkNotNull(fvjRef.getDataFrameRef().getValue(), "DataFrameRef");
         Preconditions.checkNotNull(fvjRef.getDatedVehicleJourneyRef(), "DatedVehicleJourneyRef");
+    }
+
+    private void checkPostconditions(FeedEntityOrBuilder entity, String datasetId) {
+        Preconditions.checkNotNull(entity, "entity must not be null");
+        if (entity.hasAlert()) {
+            for (var es : entity.getAlert().getInformedEntityList()) {
+                if (es.hasTrip()) {
+                    checkPostconditions(es.getTrip(), datasetId);
+                }
+            }
+        } else if (entity.hasVehicle()) {
+            if (entity.getVehicle().hasTrip()) {
+                checkPostconditions(entity.getVehicle().getTrip(), datasetId);
+            }
+        } else if (entity.hasTripUpdate()) {
+            checkPostconditions(entity.getTripUpdate().getTrip(), datasetId);
+        }
+    }
+
+    private void checkPostconditions(TripDescriptor td, String datasetId) {
+        Preconditions.checkNotNull(td, "TripDescriptor must not be null");
+        if (!td.hasTripId()) {
+            Preconditions.checkState(td.hasRouteId() && td.hasDirectionId() && td.hasStartDate() && td.hasStartTime(), "if the trip_id field can't be provided, then route_id, direction_id, start_date, and start_time must all be provided");
+        } else {
+            if (gtfsTripsService.isDatasetInCache(datasetId.toUpperCase())) {
+                // this is mandatory to check if dataset is in cache because it will be in cache iff GTFS has been
+                // imported to this dataset
+                // without this check it would reject all GTFS-RT data on datasets where no GTFS import occurred
+                Preconditions.checkState(gtfsTripsService.existsTripByDatasetIdAndTripId(datasetId.toUpperCase(), td.getTripId()),
+                        "trip_id %s not found in dataset %s", td.getTripId(), datasetId.toUpperCase());
+            }
+        }
     }
 
     private TripAndVehicleKey getKey(VehicleActivityStructure vehicleActivity) {
@@ -478,6 +512,7 @@ public class SiriToGtfsRealtimeService {
                             entity.setId(key);
 
                             entity.setVehicle(builder);
+                            checkPostconditions(entity, datasetId);
 
                             Duration timeToLive;
                             if (activity.hasValidUntilTime()) {
@@ -527,6 +562,7 @@ public class SiriToGtfsRealtimeService {
                                         entity.setId(key);
 
                                         entity.setTripUpdate(builder);
+                                        checkPostconditions(entity, datasetId);
 
                                         Timestamp expirationTime = null;
                                         for (RecordedCallStructure recordedCall : estimatedVehicleJourney.getRecordedCalls().getRecordedCallList()) {
@@ -601,6 +637,7 @@ public class SiriToGtfsRealtimeService {
                             entity.setId(key);
 
                             entity.setTripUpdate(builder);
+                            checkPostconditions(entity, datasetId);
 
                             Timestamp expirationTime = getExpirationDate(monitoredStopVisitStructure);
                             Duration timeToLive;
@@ -670,6 +707,7 @@ public class SiriToGtfsRealtimeService {
                                 entity.setId(key);
 
                                 entity.setAlert(alertFromSituation);
+                                checkPostconditions(entity, datasetId);
 
                                 Timestamp endTime = null;
                                 for (HalfOpenTimestampOutputRangeStructure range : ptSituationElement.getValidityPeriodList()) {

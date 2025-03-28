@@ -203,7 +203,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
             //Assert departure for all but last stop
             GtfsRealtime.TripUpdate.StopTimeEvent departure = stopTimeUpdate.getDeparture();
             assertNotNull(departure);
-            if (i == stopCount-1) {
+            if (i == stopCount - 1) {
                 assertTrue(departure.getAllFields().isEmpty());
             } else {
                 assertFalse(departure.getAllFields().isEmpty());
@@ -217,7 +217,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         // Specifying local service for specific datasetId-testing
         SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
                 Lists.newArrayList("RUT", "BNR"), Lists.newArrayList(),
-                Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+                Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -229,8 +229,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         SiriType siriRUT = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef1, datasetId1);
         SiriType siriBNR = createSiriEtDelivery(lineRefValue, createEstimatedCalls(1, delayPerStop), datedVehicleJourneyRef2, datasetId2);
 
-        Map<String, byte[]> redisMap = getRedisMap(localRtService, siriRUT,datasetId1);
-        Map<String, byte[]> siriBnrMap = getRedisMap(localRtService, siriBNR,datasetId2);
+        Map<String, byte[]> redisMap = getRedisMap(localRtService, siriRUT, datasetId1);
+        Map<String, byte[]> siriBnrMap = getRedisMap(localRtService, siriBNR, datasetId2);
 
         redisMap.putAll(siriBnrMap);
 
@@ -285,7 +285,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
     @Test
     void testEtToTripUpdateNoWhitelist() {
         SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -323,7 +323,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
     @Test
     void testEtToTripUpdateOriginalId() {
         SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -358,10 +358,11 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         assertEquals("TST:Quay:1234-0", tripUpdate.getStopTimeUpdate(0).getStopId());
 
     }
+
     @Test
     void testEtToTripUpdateMobiitiId() {
         SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE);
+                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -549,7 +550,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
                     call.setExpectedArrivalTime(expected);
                 }
             }
-            if (i < stopCount-1) {
+            if (i < stopCount - 1) {
                 call.setAimedDepartureTime(startTime);
 
                 if (addedDelayPerStop != null) {

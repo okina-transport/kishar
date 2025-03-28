@@ -14,20 +14,23 @@
  */
 package org.entur.kishar.routes;
 
+import org.entur.kishar.gtfsrt.GtfsTripsService;
 import org.entur.kishar.gtfsrt.SiriToGtfsRealtimeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 @Service
 @Configuration
 public class GtfsRtProviderRoute extends RestRouteBuilder {
-
-    private SiriToGtfsRealtimeService siriToGtfsRealtimeService;
+    public static final int GTFS_TRIPS_LOADING_PERIOD_MS = 30 * 60 * 1000; // 30 minutes
     public static final String PARAM_DATASET_ID = "datasetId";
 
-    public GtfsRtProviderRoute(@Autowired SiriToGtfsRealtimeService siriToGtfsRealtimeService) {
+    private final SiriToGtfsRealtimeService siriToGtfsRealtimeService;
+    private final GtfsTripsService gtfsTripsService;
+
+    public GtfsRtProviderRoute(SiriToGtfsRealtimeService siriToGtfsRealtimeService, GtfsTripsService gtfsTripsService) {
         this.siriToGtfsRealtimeService = siriToGtfsRealtimeService;
+        this.gtfsTripsService = gtfsTripsService;
     }
 
     @Override
@@ -46,23 +49,23 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
 
 
         from("direct:getStatus")
-            .routeId("kishar.getStatus")
-            .bean(siriToGtfsRealtimeService, "getStatus()")
-            ;
+                .routeId("kishar.getStatus")
+                .bean(siriToGtfsRealtimeService, "getStatus()")
+        ;
 
 
         from("direct:reset")
-            .routeId("kishar.reset")
-            .bean(siriToGtfsRealtimeService, "reset()")
-            ;
+                .routeId("kishar.reset")
+                .bean(siriToGtfsRealtimeService, "reset()")
+        ;
 
         from("direct:getTripUpdates")
                 .routeId("kishar.getTripUpdates")
                 .choice()
-                    .when(header("useOriginalId").isNotNull())
-                        .setHeader("useOriginalId", header("useOriginalId"))
-                    .otherwise()
-                        .setHeader("useOriginalId", constant(false))
+                .when(header("useOriginalId").isNotNull())
+                .setHeader("useOriginalId", header("useOriginalId"))
+                .otherwise()
+                .setHeader("useOriginalId", constant(false))
                 .end()
                 .bean(siriToGtfsRealtimeService, "getTripUpdates(${header.Content-Type},${header.datasetId}, ${header.useOriginalId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=trip-updates.pbf"))
@@ -79,10 +82,10 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
         from("direct:getAlerts")
                 .routeId("kishar.getAlerts")
                 .choice()
-                    .when(header("useOriginalId").isNotNull())
-                        .setHeader("useOriginalId", header("useOriginalId"))
-                    .otherwise()
-                        .setHeader("useOriginalId", constant(false))
+                .when(header("useOriginalId").isNotNull())
+                .setHeader("useOriginalId", header("useOriginalId"))
+                .otherwise()
+                .setHeader("useOriginalId", constant(false))
                 .end()
                 .bean(siriToGtfsRealtimeService, "getAlerts(${header.Content-Type},${header.datasetId},${header.useOriginalId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=alerts.pbf"))
@@ -90,13 +93,18 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
         ;
 
         from("direct:clearCacheByDatasetId")
-            .routeId("kishar.clearCacheByDatasetId")
-            .process(e -> siriToGtfsRealtimeService.clearCacheByDatasetId(e.getIn().getHeader(PARAM_DATASET_ID,String.class)))
+                .routeId("kishar.clearCacheByDatasetId")
+                .process(e -> siriToGtfsRealtimeService.clearCacheByDatasetId(e.getIn().getHeader(PARAM_DATASET_ID, String.class)))
         ;
 
         from("timer://kishar.update.output?fixedRate=true&period=10s")
                 .bean(siriToGtfsRealtimeService, "writeOutput()")
                 .routeId("kishar.update.output")
+        ;
+
+        from("timer://kishar.load.gtfs.trips?fixedRate=true&delay=0&period=" + GTFS_TRIPS_LOADING_PERIOD_MS)
+                .process(e -> gtfsTripsService.loadTripsFromFileSystem())
+                .routeId("kishar.load.gtfs.trips")
         ;
     }
 }
