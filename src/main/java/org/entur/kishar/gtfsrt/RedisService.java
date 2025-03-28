@@ -319,7 +319,10 @@ public class RedisService {
         }
         for (Type type : List.of(Type.TRIP_UPDATE, Type.VEHICLE_POSITION, Type.ALERT)) {
             log.info("Clear REDIS map {} for datasetId {}", type.getMapIdentifier(), datasetId);
-            redisson.getMap(type.getMapIdentifier()).fastRemove(datasetId);
+            RMapCache<String, String> gtfsRtMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
+            String findByDatasetPattern = new CompositeKey("*", datasetId.toUpperCase()).asString();
+            Set<String> keysToRemove = gtfsRtMap.keySet(findByDatasetPattern);
+            gtfsRtMap.fastRemove(keysToRemove.toArray(new String[0]));
         }
     }
 
