@@ -10,16 +10,16 @@ import org.apache.camel.model.language.ConstantExpression;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.MockEndpoints;
 import org.apache.camel.test.spring.junit5.UseAdviceWith;
+import org.entur.kishar.config.SubscriptionConfig;
 import org.entur.kishar.utils.IdProcessingParameters;
 import org.entur.kishar.utils.ObjectType;
 import org.entur.kishar.utils.TestUtils;
-import org.entur.kishar.utils.subscription.SubscriptionConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
-import java.util.Optional;
+import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -32,15 +32,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 @MockEndpoints("direct:")
 class SynchronizationRouteTest {
 
-    @Autowired
-    private CamelContext camelContext;
-
-    @Autowired
-    private SubscriptionConfig subscriptionConfig;
-
     @EndpointInject("mock:mockTimerEndpoint")
     protected MockEndpoint mockEndpointTimer;
-
+    @Autowired
+    private CamelContext camelContext;
+    @Autowired
+    private SubscriptionConfig subscriptionConfig;
     @Autowired
     private FluentProducerTemplate fluentProducerTemplate;
 
@@ -65,14 +62,14 @@ class SynchronizationRouteTest {
         assertThat(exchange.getIn().hasHeaders()).isTrue();
         assertThat(exchange.getIn().getHeader("Accept")).isEqualTo("application/json");
         assertThat(exchange.getIn().getHeader("ishtarIdProcessingParametersResource")).isEqualTo("http://ishtar.api/resource");
-        Optional<IdProcessingParameters> parameters = subscriptionConfig.getIdParametersForDataset("STAS", ObjectType.STOP);
-        if (parameters.isPresent()) {
-            IdProcessingParameters idProcessingParameters = parameters.get();
-            assertThat(idProcessingParameters.getDatasetId()).isEqualTo("STAS");
-            assertThat(idProcessingParameters.getInputPrefixToRemove()).isEqualTo("STAS:StopPoint:BP:");
-            assertThat(idProcessingParameters.getInputSuffixToRemove()).isEqualTo(":LOC");
-            assertThat(idProcessingParameters.getOutputPrefixToAdd()).isEqualTo("STAS:Quay:");
-            assertThat(idProcessingParameters.getOutputSuffixToAdd()).isEmpty();
+        Map<ObjectType, IdProcessingParameters> idProcessingParameters = subscriptionConfig.getIdParametersForDataset("STAS");
+        if (!idProcessingParameters.isEmpty()) {
+            IdProcessingParameters ipp = idProcessingParameters.get(ObjectType.STOP);
+            assertThat(ipp.getDatasetId()).isEqualTo("STAS");
+            assertThat(ipp.getInputPrefixToRemove()).isEqualTo("STAS:StopPoint:BP:");
+            assertThat(ipp.getInputSuffixToRemove()).isEqualTo(":LOC");
+            assertThat(ipp.getOutputPrefixToAdd()).isEqualTo("STAS:Quay:");
+            assertThat(ipp.getOutputSuffixToAdd()).isEmpty();
         } else {
             fail("IdProcessingParameters not found");
         }

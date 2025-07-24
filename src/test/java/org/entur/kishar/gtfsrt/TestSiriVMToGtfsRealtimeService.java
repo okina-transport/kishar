@@ -17,9 +17,10 @@ import java.util.Map;
 
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
+class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testIncomingAtPercentageVmToVehiclePosition() throws IOException {
@@ -47,6 +48,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -67,15 +69,15 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
 
         final GtfsRealtime.Position position = vehiclePosition.getPosition();
         assertNotNull(position);
-        assertEquals((float)latitude, position.getLatitude());
-        assertEquals((float)longitude, position.getLongitude());
+        assertEquals((float) latitude, position.getLatitude());
+        assertEquals((float) longitude, position.getLongitude());
 
         assertEquals(bearing, position.getBearing());
-        assertEquals((float)velocity, position.getSpeed());
+        assertEquals((float) velocity, position.getSpeed());
     }
 
     private Map<String, byte[]> getRedisMap(
-        SiriToGtfsRealtimeService realtimeService, SiriType siri
+            SiriToGtfsRealtimeService realtimeService, SiriType siri
     ) {
         Map<String, GtfsRtData> gtfsRt = realtimeService.convertSiriVmToGtfsRt(siri, "TEST");
         Map<String, byte[]> redisMap = Maps.newHashMap();
@@ -101,7 +103,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         long velocity = 56;
         OccupancyEnumeration occupancy = OccupancyEnumeration.OCCUPANCY_ENUMERATION_SEATS_AVAILABLE;
         int progressPercentage = 51;
-        int distance = NEXT_STOP_DISTANCE*2;
+        int distance = NEXT_STOP_DISTANCE * 2;
 
         boolean isVehicleAtStop = false;
 
@@ -112,6 +114,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -152,6 +155,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -187,9 +191,10 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         redisMap.putAll(siriBnrMap);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
-        Object vehiclePositions = rtService.getVehiclePositions("application/json", "TEST");
+        Object vehiclePositions = rtService.getVehiclePositions("application/json", "TEST", true);
         assertNotNull(vehiclePositions);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
@@ -203,7 +208,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         assertEquals(1, ((GtfsRealtime.FeedMessage) vehiclePositions).getEntityCount());
         assertTrue(entityList.contains(((GtfsRealtime.FeedMessage) vehiclePositions).getEntity(0)));
 
-        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getVehiclePositions(null, null));
+        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getVehiclePositions(null, null, true));
         assertEquals(feedMessage, byteArrayFeedMessage);
 
         GtfsRealtime.FeedEntity entity = feedMessage.getEntity(0);
@@ -229,9 +234,10 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
-        Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId);
+        Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId, true);
         assertNotNull(vehiclePositions);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
@@ -274,7 +280,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
     }
 
     private GtfsRealtime.FeedMessage getFeedMessage(SiriToGtfsRealtimeService rtService, String datasetId) throws InvalidProtocolBufferException {
-        Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId);
+        Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId, true);
         assertNotNull(vehiclePositions);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions);
 
@@ -283,7 +289,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         List<GtfsRealtime.FeedEntity> entityList = feedMessage.getEntityList();
         assertFalse(entityList.isEmpty());
 
-        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getVehiclePositions(null, datasetId));
+        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) rtService.getVehiclePositions(null, datasetId, true));
         assertEquals(feedMessage, byteArrayFeedMessage);
         return feedMessage;
     }
@@ -336,8 +342,8 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
 
 
     private SiriType createSiriVmDelivery(String stopPointRefValue, String lineRefValue, double latitude, double longitude, String datedVehicleJourneyRef,
-                                      String vehicleRefValue, String datasetId, float bearing, long velocity,
-                                      OccupancyEnumeration occupancy, int progressPercentage, int distance, boolean isVehicleAtStop) {
+                                          String vehicleRefValue, String datasetId, float bearing, long velocity,
+                                          OccupancyEnumeration occupancy, int progressPercentage, int distance, boolean isVehicleAtStop) {
 
 
         StopPointRefStructure stopPointRef = StopPointRefStructure.newBuilder()
@@ -355,7 +361,7 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
                 .setVehicleLocation(createLocation(longitude, latitude))
                 .setVehicleRef(createVehicleRef(vehicleRefValue))
                 .setBearing(bearing)
-                .setVelocity((int)velocity)
+                .setVelocity((int) velocity)
                 .setOccupancy(occupancy)
                 .setDataSource(datasetId)
                 .setMonitoredCall(monitoredCall)

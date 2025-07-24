@@ -1,6 +1,5 @@
 package org.entur.kishar.gtfsrt;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
 import com.google.protobuf.Timestamp;
@@ -14,12 +13,14 @@ import uk.org.siri.www.siri.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.entur.kishar.gtfsrt.Helper.createFramedVehicleJourneyRefStructure;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -38,10 +39,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
@@ -85,10 +84,11 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
+        when(redisService.handleFlexibleLine(any())).thenAnswer((Answer<String>) invocation -> {
             Object[] args = invocation.getArguments();
-            return (String) args[1];
+            return (String) args[0];
         });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
@@ -157,10 +157,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
@@ -215,9 +213,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
     @Test
     void testEtToTripUpdateFilterOnDatasetId() {
         // Specifying local service for specific datasetId-testing
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList("RUT", "BNR"), Lists.newArrayList(),
-                Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper, NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -235,10 +231,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         redisMap.putAll(siriBnrMap);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", "RUT", true);
@@ -284,8 +278,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testEtToTripUpdateNoWhitelist() {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper, NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -297,10 +290,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
@@ -322,8 +313,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testEtToTripUpdateOriginalId() {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper, NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -335,10 +325,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
@@ -361,8 +349,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testEtToTripUpdateMobiitiId() {
-        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService, prometheusMetricsService, idMapper,
-                Lists.newArrayList(), Lists.newArrayList(), Lists.newArrayList(), NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
+        SiriToGtfsRealtimeService localRtService = new SiriToGtfsRealtimeService(new AlertFactory(), redisService,
+                prometheusMetricsService, idMapper, NEXT_STOP_PERCENTAGE, NEXT_STOP_DISTANCE, gtfsTripsService);
 
         String lineRefValue = "TST:Line:1234";
         int delayPerStop = 30;
@@ -374,12 +362,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
         when(redisService.readIdMap(RedisService.Type.ID_MAPPING, "TST:Quay:1234-0")).thenReturn("MOBIITI:Quay:1234-0");
-        when(redisService.readLineIdMap(RedisService.Type.ARE_FLEXIBLE_LINES, lineRefValue, datasetId)).thenReturn(lineRefValue);
+        when(redisService.handleFlexibleLine(lineRefValue)).thenReturn(lineRefValue);
 
         localRtService.writeOutput();
 
@@ -415,10 +399,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
@@ -442,10 +424,8 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(idMapper.applyIdProcessingParameters(anyString(), anyString())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[1];
-        });
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, false);

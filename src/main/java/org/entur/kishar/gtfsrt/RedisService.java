@@ -294,23 +294,21 @@ public class RedisService {
         }
     }
 
-    private String readBooleanMap(Type type, String key, String datasetId) {
+    private String readBooleanMap(Type type, String key) {
         if (redisEnabled) {
             RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
-
-            return idMap.get(datasetId.toUpperCase() + ":Line:" + key);
+            return idMap.get(key);
         } else {
             return "false";
         }
     }
 
-    public String readLineIdMap(Type type, String key, String datasetId) {
-        String isFlexibleLine = readBooleanMap(type, key, datasetId);
+    public String handleFlexibleLine(String key) {
+        String isFlexibleLine = readBooleanMap(Type.ARE_FLEXIBLE_LINES, key);
         if ("true".equals(isFlexibleLine)) {
-            return datasetId.toUpperCase() + ":FlexibleLine:" + key;
-        } else {
-            return datasetId.toUpperCase() + ":Line:" + key;
+            return key.replace(":Line:", ":FlexibleLine:");
         }
+        return key;
     }
 
     public void clearByDatasetId(String datasetId) {

@@ -1,4 +1,4 @@
-package org.entur.kishar.utils.subscription;
+package org.entur.kishar.config;
 
 /*
  * Licensed under the EUPL, Version 1.2 or – as soon they will be approved by
@@ -23,8 +23,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 @PropertySource(value = "${kishar.subscriptions.config.path}", factory = YamlPropertySourceFactory.class)
 @ConfigurationProperties(prefix = "anshar")
@@ -33,13 +35,10 @@ public class SubscriptionConfig {
 
     private List<IdProcessingParameters> idProcessingParameters = new CopyOnWriteArrayList<>();
 
-    public Optional<IdProcessingParameters> getIdParametersForDataset(String datasetId, ObjectType objectType) {
-        for (IdProcessingParameters idProcessingParametrer : idProcessingParameters) {
-            if (datasetId != null && datasetId.equalsIgnoreCase(idProcessingParametrer.getDatasetId()) && objectType != null && objectType.equals(idProcessingParametrer.getObjectType())) {
-                return Optional.of(idProcessingParametrer);
-            }
-        }
-        return Optional.empty();
+    public Map<ObjectType, IdProcessingParameters> getIdParametersForDataset(String datasetId) {
+        return idProcessingParameters.stream()
+                .filter(ipp -> ipp.getDatasetId().equalsIgnoreCase(datasetId))
+                .collect(Collectors.toMap(IdProcessingParameters::getObjectType, p -> p));
     }
 
     public void setIdProcessingParameters(List<IdProcessingParameters> idProcessingParameters) {

@@ -9,6 +9,7 @@ import uk.org.siri.www.siri.SiriType;
 import uk.org.siri.www.siri.SituationExchangeDeliveryStructure;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,6 +18,7 @@ import static org.entur.kishar.gtfsrt.Helper.createPtSituationElementWithoutEndD
 import static org.entur.kishar.gtfsrt.TestAlertFactory.assertAlert;
 import static org.entur.kishar.utils.Constants.MAX_END_DATE;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
@@ -28,8 +30,9 @@ class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", "TEST", false);
+        Object alerts = rtService.getAlerts("application/json", "TEST", true);
         assertNotNull(alerts);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
 
@@ -67,7 +70,7 @@ class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", "BNR", false);
+        Object alerts = rtService.getAlerts("application/json", "BNR", true);
         assertNotNull(alerts);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
     }
@@ -90,7 +93,7 @@ class TestSiriSXToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
         when(redisService.readGtfsRtMap(RedisService.Type.ALERT)).thenReturn(redisMap);
         rtService.writeOutput();
-        Object alerts = rtService.getAlerts("application/json", "TEST", false);
+        Object alerts = rtService.getAlerts("application/json", "TEST", true);
         assertNotNull(alerts);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, alerts);
 
