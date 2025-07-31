@@ -131,15 +131,16 @@ public class IdMapper {
     }
 
     private String applyIdProcessingParameterForStop(String stopId, IdProcessingParameters ipp, boolean useOriginalId) {
-        stopId = applyIdProcessingParameter(stopId, ipp);
+        String stopIdWithIPP = applyIdProcessingParameter(stopId, ipp);
         if (!useOriginalId) {
-            String mobiitiId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopId);
+            String mobiitiId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopIdWithIPP);
             if (mobiitiId == null) {
-                mobiitiId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopId.replace(":Quay:", ":StopPlace:"));
+                mobiitiId = redisService.readIdMap(RedisService.Type.ID_MAPPING, stopIdWithIPP.replace(":Quay:", ":StopPlace:"));
             }
-            return mobiitiId;
+            // return productors stopId if MOBIITI id not found
+            return mobiitiId != null ? mobiitiId : stopId;
         }
-        return stopId;
+        return stopIdWithIPP;
     }
 
 }
