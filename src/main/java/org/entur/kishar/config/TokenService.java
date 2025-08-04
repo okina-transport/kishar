@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class TokenService {
     private static final Logger log = LoggerFactory.getLogger(TokenService.class);
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final Keycloak keycloakClient;
 
@@ -27,7 +28,12 @@ public class TokenService {
                 .build();
     }
 
-    public String getToken() {
+    public String getAuthorizationHeader() {
+        log.debug("Get authorization header from keycloak");
+        return BEARER_PREFIX + getToken();
+    }
+
+    private String getToken() {
         try {
             return keycloakClient.tokenManager().getAccessTokenString();
         } catch (Exception e){
