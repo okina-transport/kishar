@@ -5,5 +5,6 @@ public enum ObjectType {
     LINE,
     VEHICLE_JOURNEY,
     OPERATOR,
-    NETWORK
+    NETWORK,
+    ROUTE
 }
