@@ -14,6 +14,7 @@
  */
 package org.entur.kishar.routes;
 
+import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -35,5 +36,8 @@ public class RestRouteBuilder extends RouteBuilder {
                 .component("jetty")
                 .port(portNumber);
 
+        interceptFrom("rest:*")
+                .log(LoggingLevel.DEBUG, "Remove Authorization header")
+                .process(e -> e.getMessage().removeHeader("Authorization"));
     }
 }
