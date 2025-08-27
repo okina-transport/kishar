@@ -1,4 +1,4 @@
-FROM openjdk:11-jre
+FROM eclipse-temurin:21.0.5_11-jre
 
 ARG JAR_FILE
 COPY ${JAR_FILE} kishar.jar
