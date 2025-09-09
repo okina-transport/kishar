@@ -50,7 +50,7 @@ public class SynchronizationRoute extends RouteBuilder {
     public void configure() {
         from("timer://ishtarSynchronization?period=" + ishtarSynchronizationInterval + "&delay=" + ishtarSynchronizationInitialDelay)
                 .routeId("ISHTAR_SYNCHRONIZATION_ROUTE")
-                .setHeader("ishtarIdProcessingParametersResource", constant(ishtarUrl))
+                .setHeader("ishtarIdProcessingParametersResource", simple(ishtarUrl+"?dataType=gtfs-rt"))
                 .setHeader("Accept", constant("application/json"))
                 .setHeader("Authorization", method(tokenService, "getAuthorizationHeader"))
                 .toD("${header.ishtarIdProcessingParametersResource}")
