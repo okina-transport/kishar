@@ -61,7 +61,7 @@ class SynchronizationRouteTest {
         assertThat(exchange).isNotNull();
         assertThat(exchange.getIn().hasHeaders()).isTrue();
         assertThat(exchange.getIn().getHeader("Accept")).isEqualTo("application/json");
-        assertThat(exchange.getIn().getHeader("ishtarIdProcessingParametersResource")).isEqualTo("http://ishtar.api/resource");
+        assertThat(exchange.getIn().getHeader("ishtarIdProcessingParametersResource")).isEqualTo("http://ishtar.api/resource?dataType=gtfs-rt");
         Map<ObjectType, IdProcessingParameters> idProcessingParameters = subscriptionConfig.getIdParametersForDataset("STAS");
         if (!idProcessingParameters.isEmpty()) {
             IdProcessingParameters ipp = idProcessingParameters.get(ObjectType.STOP);
