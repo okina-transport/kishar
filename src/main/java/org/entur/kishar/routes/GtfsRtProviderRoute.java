@@ -74,6 +74,12 @@ public class GtfsRtProviderRoute extends RestRouteBuilder {
 
         from("direct:getVehiclePositions")
                 .routeId("kishar.getVehiclePositions")
+                .choice()
+                .when(header("useOriginalId").isNotNull())
+                .setHeader("useOriginalId", header("useOriginalId"))
+                .otherwise()
+                .setHeader("useOriginalId", constant(false))
+                .end()
                 .bean(siriToGtfsRealtimeService, "getVehiclePositions(${header.Content-Type},${header.datasetId},${header.useOriginalId})")
                 .setHeader("Content-Disposition", constant("attachment; filename=vehicle-positions.pbf"))
                 .setHeader("Content-Type", constant("application/octet-stream"))
