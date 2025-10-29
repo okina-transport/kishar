@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.utils.BlobStoreService;
+import org.entur.kishar.utils.GTFSRTUtils;
 import org.redisson.Redisson;
 import org.redisson.api.RMapCache;
 import org.redisson.api.RedissonClient;
@@ -247,10 +248,29 @@ public class RedisService {
             previousStopTimeUpdate = stopTime;
         }
 
+        int currentDelay = 0;
         for (GtfsRealtime.TripUpdate.StopTimeUpdate filteredStopTime : filteredStopTimes) {
+
+            if (filteredStopTime.getArrival().hasDelay() && filteredStopTime.getArrival().getDelay() > 0){
+                currentDelay = filteredStopTime.getArrival().getDelay();
+            }else if(currentDelay > 0){
+                // applying delay observed in stop N to stops N+1, N+2 etc
+                filteredStopTime = GTFSRTUtils.updateArrivalDelay(filteredStopTime, currentDelay);
+                filteredStopTime = GTFSRTUtils.updateDepartureDelay(filteredStopTime, currentDelay);
+
+
+                if (filteredStopTime.getArrival().hasTime()){
+                    long currentArrivalTime = filteredStopTime.getArrival().getTime();
+                    filteredStopTime = GTFSRTUtils.updateArrivalTime(filteredStopTime,currentArrivalTime + currentDelay);
+                }
+
+                if (filteredStopTime.getDeparture().hasTime()){
+                    long currentDepartureTime = filteredStopTime.getDeparture().getTime();
+                    filteredStopTime = GTFSRTUtils.updateDepartureTime(filteredStopTime,currentDepartureTime + currentDelay);
+                }
+            }
             mergedTripUpdate.addStopTimeUpdate(filteredStopTime);
         }
-
 
         return mergedTripUpdate.build();
     }
