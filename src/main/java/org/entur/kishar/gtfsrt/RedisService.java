@@ -248,25 +248,25 @@ public class RedisService {
             previousStopTimeUpdate = stopTime;
         }
 
-        int currentDelay = 0;
+        int firstStopDelay = 0;
         for (GtfsRealtime.TripUpdate.StopTimeUpdate filteredStopTime : filteredStopTimes) {
 
-            if (filteredStopTime.getArrival().hasDelay() && filteredStopTime.getArrival().getDelay() > 0){
-                currentDelay = filteredStopTime.getArrival().getDelay();
-            }else if(currentDelay > 0){
+            if (filteredStopTime.getArrival().hasDelay() && filteredStopTime.getArrival().getDelay() > 0 && firstStopDelay == 0) {
+                firstStopDelay = filteredStopTime.getArrival().getDelay();
+            }else if(firstStopDelay > 0){
                 // applying delay observed in stop N to stops N+1, N+2 etc
-                filteredStopTime = GTFSRTUtils.updateArrivalDelay(filteredStopTime, currentDelay);
-                filteredStopTime = GTFSRTUtils.updateDepartureDelay(filteredStopTime, currentDelay);
+                filteredStopTime = GTFSRTUtils.updateArrivalDelay(filteredStopTime, firstStopDelay);
+                filteredStopTime = GTFSRTUtils.updateDepartureDelay(filteredStopTime, firstStopDelay);
 
 
                 if (filteredStopTime.getArrival().hasTime()){
                     long currentArrivalTime = filteredStopTime.getArrival().getTime();
-                    filteredStopTime = GTFSRTUtils.updateArrivalTime(filteredStopTime,currentArrivalTime + currentDelay);
+                    filteredStopTime = GTFSRTUtils.updateArrivalTime(filteredStopTime,currentArrivalTime + firstStopDelay);
                 }
 
                 if (filteredStopTime.getDeparture().hasTime()){
                     long currentDepartureTime = filteredStopTime.getDeparture().getTime();
-                    filteredStopTime = GTFSRTUtils.updateDepartureTime(filteredStopTime,currentDepartureTime + currentDelay);
+                    filteredStopTime = GTFSRTUtils.updateDepartureTime(filteredStopTime,currentDepartureTime + firstStopDelay);
                 }
             }
             mergedTripUpdate.addStopTimeUpdate(filteredStopTime);

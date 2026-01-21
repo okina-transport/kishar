@@ -32,7 +32,7 @@ class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
 
         ZonedDateTime arrival2 = ZonedDateTime.of(2055, 8, 20, 12, 1, 0, 0, ZoneOffset.UTC);
         ZonedDateTime departure2 = ZonedDateTime.of(2055, 8, 20, 12, 1, 30, 0, ZoneOffset.UTC);
-        GtfsRealtime.FeedEntity existing = generateEntity("STOP2", arrival2, departure2);
+        GtfsRealtime.FeedEntity existing = generateEntityWithDelay("STOP2", arrival2, departure2, 10);
 
 
         // Simulating that STOP2(12h10) was integrated before. It's the existing Entity.
@@ -45,8 +45,8 @@ class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         Assertions.assertTrue(mergedTrip.getStopTimeUpdate(1).getDeparture().hasDelay());
 
         // 40s delay from STOP1 has been applied to stop 2
-        Assertions.assertEquals(40, mergedTrip.getStopTimeUpdate(1).getArrival().getDelay());
-        Assertions.assertEquals(40, mergedTrip.getStopTimeUpdate(1).getDeparture().getDelay());
+        Assertions.assertEquals(50, mergedTrip.getStopTimeUpdate(1).getArrival().getDelay());
+        Assertions.assertEquals(50, mergedTrip.getStopTimeUpdate(1).getDeparture().getDelay());
 
         // arrival for stop2 is now 12h01 40s and departure : 12h02 10s
         Assertions.assertEquals(2702376100L, mergedTrip.getStopTimeUpdate(1).getArrival().getTime());
