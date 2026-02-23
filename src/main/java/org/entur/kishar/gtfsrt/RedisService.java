@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
+import org.entur.kishar.utils.StopTimeUpdateComparator;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -210,6 +211,7 @@ public class RedisService {
         GtfsRealtime.TripUpdate.Builder mergedTripUpdate = GtfsRealtime.TripUpdate.newBuilder();
         mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
         mergedTripUpdate.setVehicle(existingEntity.getTripUpdate().getVehicle());
+        mergedTripUpdate.setTimestamp(incomingEntity.getTripUpdate().getTimestamp() != 0 ? incomingEntity.getTripUpdate().getTimestamp() : existingEntity.getTripUpdate().getTimestamp());
 
         if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())) {
             LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
@@ -248,27 +250,7 @@ public class RedisService {
             previousStopTimeUpdate = stopTime;
         }
 
-        int firstStopDelay = 0;
         for (GtfsRealtime.TripUpdate.StopTimeUpdate filteredStopTime : filteredStopTimes) {
-
-            if (filteredStopTime.getArrival().hasDelay() && filteredStopTime.getArrival().getDelay() > 0 && firstStopDelay == 0) {
-                firstStopDelay = filteredStopTime.getArrival().getDelay();
-            }else if(firstStopDelay > 0){
-                // applying delay observed in stop N to stops N+1, N+2 etc
-                filteredStopTime = GTFSRTUtils.updateArrivalDelay(filteredStopTime, firstStopDelay);
-                filteredStopTime = GTFSRTUtils.updateDepartureDelay(filteredStopTime, firstStopDelay);
-
-
-                if (filteredStopTime.getArrival().hasTime()){
-                    long currentArrivalTime = filteredStopTime.getArrival().getTime();
-                    filteredStopTime = GTFSRTUtils.updateArrivalTime(filteredStopTime,currentArrivalTime + firstStopDelay);
-                }
-
-                if (filteredStopTime.getDeparture().hasTime()){
-                    long currentDepartureTime = filteredStopTime.getDeparture().getTime();
-                    filteredStopTime = GTFSRTUtils.updateDepartureTime(filteredStopTime,currentDepartureTime + firstStopDelay);
-                }
-            }
             mergedTripUpdate.addStopTimeUpdate(filteredStopTime);
         }
 
@@ -356,26 +338,6 @@ public class RedisService {
 
     }
 
-    class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpdate.StopTimeUpdate> {
-        @Override
-        public int compare(GtfsRealtime.TripUpdate.StopTimeUpdate stu1, GtfsRealtime.TripUpdate.StopTimeUpdate stu2) {
-            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
-                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
-            }
 
-            if (stu1 != null && stu1.getDeparture() != null && stu1.getDeparture().hasTime() && stu2 != null && stu2.getDeparture() != null && stu2.getDeparture().hasTime()) {
-                return Long.compare(stu1.getDeparture().getTime(), stu2.getDeparture().getTime());
-            }
-
-            if (stu1 != null && stu1.getArrival() != null && stu1.getArrival().hasTime() && stu2 != null && stu2.getArrival() != null && stu2.getArrival().hasTime()) {
-                return Long.compare(stu1.getArrival().getTime(), stu2.getArrival().getTime());
-            }
-
-            if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
-                return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
-            }
-            return stu1.getStopId().compareTo(stu2.getStopId());
-        }
-    }
 
 }

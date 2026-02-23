@@ -21,6 +21,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime.*;
+import org.apache.commons.collections4.CollectionUtils;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
@@ -33,8 +34,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.www.siri.*;
+import org.entur.kishar.utils.StopTimeUpdateComparator;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -105,8 +108,74 @@ public class SiriToGtfsRealtimeService {
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
         }
+        feedMessage = filterDecreasingStopUpdates(feedMessage);
         feedMessage = idMapper.applyIdProcessingParameters(feedMessage, datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
+    }
+
+    public FeedMessage filterDecreasingStopUpdates(FeedMessage feedMessage) {
+        if (feedMessage == null || CollectionUtils.isEmpty(feedMessage.getEntityList())){
+            return feedMessage;
+        }
+        FeedMessage.Builder processedMessage = FeedMessage.newBuilder();
+        processedMessage.setHeader(feedMessage.getHeader());
+
+
+
+        List<FeedEntity> processedEntities = new ArrayList<>();
+        for (FeedEntity feedEntity : feedMessage.getEntityList()) {
+            if (feedEntity.getTripUpdate() == null){
+                processedEntities.add(feedEntity);
+            }
+
+            FeedEntity.Builder processedEntityBuilder = FeedEntity.newBuilder();
+            processedEntityBuilder.setId(feedEntity.getId());
+            processedEntityBuilder.setTripUpdate(filterDecreasingUpdates(feedEntity.getTripUpdate()));
+            processedEntities.add(processedEntityBuilder.build());
+        }
+        processedMessage.addAllEntity(processedEntities);
+
+        return processedMessage.build();
+    }
+
+    private TripUpdate filterDecreasingUpdates(TripUpdate tripUpdate) {
+        TripUpdate.Builder processedTripUpdate = TripUpdate.newBuilder();
+        if (tripUpdate.hasTrip()){
+            processedTripUpdate.setTrip(tripUpdate.getTrip());
+        }
+
+        if (tripUpdate.hasVehicle()){
+            processedTripUpdate.setVehicle(tripUpdate.getVehicle());
+        }
+
+        List<TripUpdate.StopTimeUpdate> originalUpdates = new ArrayList<>(tripUpdate.getStopTimeUpdateList());
+        originalUpdates.sort(new StopTimeUpdateComparator());
+        long lastDepartureTime = 0;
+        long lastArrivalTime = 0;
+
+        for (TripUpdate.StopTimeUpdate originalStu : originalUpdates) {
+
+            if (isDepartureAscending(originalStu, lastDepartureTime) && isArrivalAscending(originalStu, lastArrivalTime)){
+                processedTripUpdate.addStopTimeUpdate(originalStu);
+                if (originalStu.hasDeparture() && originalStu.getDeparture().hasTime()){
+                    lastDepartureTime = originalStu.getDeparture().getTime();
+                }
+
+                if (originalStu.hasArrival() && originalStu.getArrival().hasTime()){
+                    lastArrivalTime = originalStu.getArrival().getTime();
+                }
+            }
+        }
+        processedTripUpdate.setTimestamp(tripUpdate.getTimestamp());
+        return processedTripUpdate.build();
+    }
+
+    private boolean isArrivalAscending(TripUpdate.StopTimeUpdate originalStu, long lastArrivalTime) {
+        return !originalStu.hasArrival() || !originalStu.getArrival().hasTime() || originalStu.getArrival().getTime() > lastArrivalTime;
+    }
+
+    private boolean isDepartureAscending(TripUpdate.StopTimeUpdate originalStu, long lastDepartureTime) {
+        return !originalStu.hasDeparture() || !originalStu.getDeparture().hasTime() || originalStu.getDeparture().getTime() > lastDepartureTime;
     }
 
     public Object getVehiclePositions(String contentType, String datasetId, boolean useOriginalId) {

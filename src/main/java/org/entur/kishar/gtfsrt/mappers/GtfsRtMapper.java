@@ -53,6 +53,9 @@ public class GtfsRtMapper {
             tripUpdate.setVehicle(vd);
         }
 
+        long timestamp = stopVisit.getRecordedAtTime().getSeconds();
+        tripUpdate.setTimestamp(timestamp);
+
         applyStopSpecificDelayToTripUpdateIfApplicable(datasetId, stopVisit, tripUpdate);
         return tripUpdate;
     }
@@ -395,12 +398,16 @@ public class GtfsRtMapper {
                 if (monitoredCalls.getOrder() > 0){
                     stopSequence = monitoredCalls.getOrder();
                 }
-
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,stopSequence,  tripUpdate, arrivalTime, departureTime, datasetId);
+            GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship scheduleRelationShip = getScheduleRelationShip(monitoredCalls);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,stopSequence,  tripUpdate, arrivalTime, departureTime, datasetId, scheduleRelationShip);
                 stopCounter++;
 
         }
 
+    }
+
+    private GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship getScheduleRelationShip(MonitoredCallStructure monitoredCall) {
+         return CallStatusEnumeration.CALL_STATUS_ENUMERATION_CANCELLED.equals(monitoredCall.getArrivalStatus()) ? GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.UNSCHEDULED : GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED;
     }
 
     private void applyStopSpecificDelayToTripUpdateIfApplicable(String datasetId,
@@ -456,8 +463,8 @@ public class GtfsRtMapper {
                 } else {
                     stopSequence = stopCounter;
                 }
-
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
+                GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship scheduleRelationShip = getScheduleRelationShip(recordedCall);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId, scheduleRelationShip);
 
                 stopCounter++;
             }
@@ -490,12 +497,20 @@ public class GtfsRtMapper {
                 } else {
                     stopSequence = stopCounter;
                 }
-
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId);
+                GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship scheduleRelationShip = getScheduleRelationShip(estimatedCall);
+                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds, stopSequence, tripUpdate, arrivalTime, departureTime, datasetId, scheduleRelationShip);
 
                 stopCounter++;
             }
         }
+    }
+
+    private GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship getScheduleRelationShip(RecordedCallStructure recordedCall) {
+        return recordedCall.getCancellation() ? GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.UNSCHEDULED : GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED;
+    }
+
+    private GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship getScheduleRelationShip(EstimatedCallStructure estimatedCall) {
+        return CallStatusEnumeration.CALL_STATUS_ENUMERATION_CANCELLED.equals(estimatedCall.getArrivalStatus()) ? GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.UNSCHEDULED : GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship.SCHEDULED;
     }
 
     private Integer calculateDiff(Timestamp aimed, Timestamp expected) {
@@ -505,7 +520,8 @@ public class GtfsRtMapper {
         return null;
     }
 
-    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, Integer stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate, long arrivalExpected, long departureExpected, String datasetId) {
+    private void addStopTimeUpdate(StopPointRefStructure stopPointRef, Integer arrivalDelayInSeconds, Integer departureDelayInSeconds, Integer stopSequence, GtfsRealtime.TripUpdate.Builder tripUpdate,
+                                   long arrivalExpected, long departureExpected, String datasetId, GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship scheduleRelationship) {
 
         GtfsRealtime.TripUpdate.StopTimeUpdate.Builder stopTimeUpdate = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
 
@@ -527,6 +543,7 @@ public class GtfsRtMapper {
         }
 
         stopTimeUpdate.setStopId(stopPointRef.getValue());
+        stopTimeUpdate.setScheduleRelationship(scheduleRelationship);
 
         tripUpdate.addStopTimeUpdate(stopTimeUpdate);
     }
