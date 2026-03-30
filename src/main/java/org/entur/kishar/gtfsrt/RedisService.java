@@ -209,7 +209,12 @@ public class RedisService {
     public GtfsRealtime.TripUpdate buildMergedTripUpdate(GtfsRealtime.FeedEntity existingEntity, GtfsRealtime.FeedEntity incomingEntity) {
 
         GtfsRealtime.TripUpdate.Builder mergedTripUpdate = GtfsRealtime.TripUpdate.newBuilder();
-        mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
+        if (incomingEntity.getTripUpdate().hasTrip() && incomingEntity.getTripUpdate().getTrip().hasScheduleRelationship()){
+            mergedTripUpdate.setTrip(incomingEntity.getTripUpdate().getTrip());
+        }else{
+            mergedTripUpdate.setTrip(existingEntity.getTripUpdate().getTrip());
+        }
+
         mergedTripUpdate.setVehicle(existingEntity.getTripUpdate().getVehicle());
         mergedTripUpdate.setTimestamp(incomingEntity.getTripUpdate().getTimestamp() != 0 ? incomingEntity.getTripUpdate().getTimestamp() : existingEntity.getTripUpdate().getTimestamp());
 

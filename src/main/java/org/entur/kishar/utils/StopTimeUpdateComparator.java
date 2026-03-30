@@ -12,6 +12,10 @@ public class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpd
             return -1;
         }
 
+        if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
+            return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
+        }
+
         if ( stu1.getDeparture() != null && stu1.getDeparture().hasTime() && stu2.getDeparture() != null && stu2.getDeparture().hasTime()) {
             return Long.compare(stu1.getDeparture().getTime(), stu2.getDeparture().getTime());
         }
@@ -20,9 +24,7 @@ public class StopTimeUpdateComparator implements Comparator<GtfsRealtime.TripUpd
             return Long.compare(stu1.getArrival().getTime(), stu2.getArrival().getTime());
         }
 
-        if (stu1.hasStopSequence() && stu2.hasStopSequence()) {
-            return Integer.compare(stu1.getStopSequence(), stu2.getStopSequence());
-        }
+
         return stu1.getStopId().compareTo(stu2.getStopId());
     }
 }

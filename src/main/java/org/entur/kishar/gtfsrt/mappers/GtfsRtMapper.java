@@ -3,6 +3,8 @@ package org.entur.kishar.gtfsrt.mappers;
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import uk.org.siri.www.siri.*;
 
@@ -16,6 +18,7 @@ import java.util.Date;
 
 public class GtfsRtMapper {
 
+    private static final Logger log = LoggerFactory.getLogger(GtfsRtMapper.class);
     private final DateFormat gtfsRtDateFormat = new SimpleDateFormat("yyyyMMdd");
     private final DateFormat gtfsRtTimeFormat = new SimpleDateFormat("HH:mm:ss");
 
@@ -101,8 +104,22 @@ public class GtfsRtMapper {
             td.setStartDate(gtfsRtDateFormat.format(date));
             td.setStartTime(gtfsRtTimeFormat.format(date));
         }
+        GtfsRealtime.TripDescriptor.ScheduleRelationship tripScheduleRelationShip = getTripScheduleRelationShip(stopVisit);
+        td.setScheduleRelationship(tripScheduleRelationShip);
 
         return td.build();
+    }
+
+    private GtfsRealtime.TripDescriptor.ScheduleRelationship getTripScheduleRelationShip(MonitoredStopVisitStructure stopVisit) {
+        if (!stopVisit.hasMonitoredVehicleJourney() || !stopVisit.getMonitoredVehicleJourney().hasMonitoredCall() || stopVisit.getMonitoredVehicleJourney().getMonitoredCall() == null){
+            return GtfsRealtime.TripDescriptor.ScheduleRelationship.UNSCHEDULED;
+        }
+
+        if (CallStatusEnumeration.CALL_STATUS_ENUMERATION_CANCELLED.equals(stopVisit.getMonitoredVehicleJourney().getMonitoredCall().getArrivalStatus())){
+            return GtfsRealtime.TripDescriptor.ScheduleRelationship.CANCELED;
+        }
+
+        return GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
     }
 
     private void mapStartDate(GtfsRealtime.TripDescriptor.Builder td, MonitoredStopVisitStructure stopVisit) {
@@ -398,12 +415,15 @@ public class GtfsRtMapper {
                 if (monitoredCalls.getOrder() > 0){
                     stopSequence = monitoredCalls.getOrder();
                 }
+
             GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship scheduleRelationShip = getScheduleRelationShip(monitoredCalls);
-                addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,stopSequence,  tripUpdate, arrivalTime, departureTime, datasetId, scheduleRelationShip);
-                stopCounter++;
+            log.debug("schedule relationShip:" + scheduleRelationShip.name());
+
+            addStopTimeUpdate(stopPointRef, arrivalDelayInSeconds, departureDelayInSeconds,stopSequence,  tripUpdate, arrivalTime, departureTime, datasetId, scheduleRelationShip);
+            stopCounter++;
+
 
         }
-
     }
 
     private GtfsRealtime.TripUpdate.StopTimeUpdate.ScheduleRelationship getScheduleRelationShip(MonitoredCallStructure monitoredCall) {

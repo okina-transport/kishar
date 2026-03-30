@@ -40,14 +40,7 @@ class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         tripUpdateBuilder.setTrip(tripDesc.build());
 
 
-        tripUpdateBuilder.setTimestamp(12345467);
-        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder tripUpd1 = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
-        tripUpd1.setStopId("A");
-        tripUpd1.setStopSequence(1);
-        GtfsRealtime.TripUpdate.StopTimeEvent.Builder evt1 = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
-        evt1.setTime(10);
-        tripUpd1.setDeparture(evt1.build());
-        tripUpdateBuilder.addStopTimeUpdate(tripUpd1.build());
+
 
 
         // trip update2 should be filtered because update time 2 = update time 1 (10)
@@ -69,9 +62,19 @@ class TestSiriSMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest{
         tripUpd3.setDeparture(evt3.build());
         tripUpdateBuilder.addStopTimeUpdate(tripUpd3.build());
 
+        tripUpdateBuilder.setTimestamp(12345467);
+        GtfsRealtime.TripUpdate.StopTimeUpdate.Builder tripUpd1 = GtfsRealtime.TripUpdate.StopTimeUpdate.newBuilder();
+        tripUpd1.setStopId("A");
+        tripUpd1.setStopSequence(1);
+        GtfsRealtime.TripUpdate.StopTimeEvent.Builder evt1 = GtfsRealtime.TripUpdate.StopTimeEvent.newBuilder();
+        evt1.setTime(10);
+        tripUpd1.setDeparture(evt1.build());
+        tripUpdateBuilder.addStopTimeUpdate(tripUpd1.build());
 
         entityBuilder.setTripUpdate(tripUpdateBuilder.build());
         originalMessageBuilder.addEntity(entityBuilder.build());
+
+
 
 
 
