@@ -105,26 +105,29 @@ public class SiriToGtfsRealtimeService {
             prometheusMetricsService.registerIncomingRequest("SIRI_ET", 1);
         }
         FeedMessage feedMessage = tripUpdatesByDatasetId.get(datasetId.toUpperCase());
+        int nbOfMessageBeforeFiltering = 0;
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
+        }else{
+            nbOfMessageBeforeFiltering = feedMessage.getEntityCount();
         }
         feedMessage = filterDecreasingStopUpdates(feedMessage);
+        LOG.info("TripUpdate - before filtering:{} - after filtering : {}", nbOfMessageBeforeFiltering, feedMessage.getEntityCount());
         feedMessage = idMapper.applyIdProcessingParameters(feedMessage, datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
     public FeedMessage filterDecreasingStopUpdates(FeedMessage feedMessage) {
-        if (feedMessage == null || CollectionUtils.isEmpty(feedMessage.getEntityList())){
+        if (feedMessage == null || CollectionUtils.isEmpty(feedMessage.getEntityList())) {
             return feedMessage;
         }
         FeedMessage.Builder processedMessage = FeedMessage.newBuilder();
         processedMessage.setHeader(feedMessage.getHeader());
 
 
-
         List<FeedEntity> processedEntities = new ArrayList<>();
         for (FeedEntity feedEntity : feedMessage.getEntityList()) {
-            if (feedEntity.getTripUpdate() == null){
+            if (feedEntity.getTripUpdate() == null) {
                 processedEntities.add(feedEntity);
             }
 
@@ -140,11 +143,11 @@ public class SiriToGtfsRealtimeService {
 
     private TripUpdate filterDecreasingUpdates(TripUpdate tripUpdate) {
         TripUpdate.Builder processedTripUpdate = TripUpdate.newBuilder();
-        if (tripUpdate.hasTrip()){
+        if (tripUpdate.hasTrip()) {
             processedTripUpdate.setTrip(tripUpdate.getTrip());
         }
 
-        if (tripUpdate.hasVehicle()){
+        if (tripUpdate.hasVehicle()) {
             processedTripUpdate.setVehicle(tripUpdate.getVehicle());
         }
 
@@ -155,13 +158,13 @@ public class SiriToGtfsRealtimeService {
 
         for (TripUpdate.StopTimeUpdate originalStu : originalUpdates) {
 
-            if (isDepartureAscending(originalStu, lastDepartureTime) && isArrivalAscending(originalStu, lastArrivalTime)){
+            if (isDepartureAscending(originalStu, lastDepartureTime) && isArrivalAscending(originalStu, lastArrivalTime)) {
                 processedTripUpdate.addStopTimeUpdate(originalStu);
-                if (originalStu.hasDeparture() && originalStu.getDeparture().hasTime()){
+                if (originalStu.hasDeparture() && originalStu.getDeparture().hasTime()) {
                     lastDepartureTime = originalStu.getDeparture().getTime();
                 }
 
-                if (originalStu.hasArrival() && originalStu.getArrival().hasTime()){
+                if (originalStu.hasArrival() && originalStu.getArrival().hasTime()) {
                     lastArrivalTime = originalStu.getArrival().getTime();
                 }
             }
@@ -338,6 +341,14 @@ public class SiriToGtfsRealtimeService {
                     vehiclePositionsByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum(),
                     alertsByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum());
         }
+
+
+        tripUpdatesByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"TRIP_UPDATE", entry.getValue().getEntityCount()));
+        vehiclePositionsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"VEHICLE_POSITION", entry.getValue().getEntityCount()));
+        alertsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"ALERT", entry.getValue().getEntityCount()));
+
+
+
         LOG.info("Wrote output in {} ms: {} alerts, {} vehicle-positions, {} trip-updates",
                 (System.currentTimeMillis() - t1),
                 alertsByDatasetId.values().stream().mapToInt(FeedMessage::getEntityCount).sum(),

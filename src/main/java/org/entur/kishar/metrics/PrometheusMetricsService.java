@@ -29,7 +29,10 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class PrometheusMetricsService extends PrometheusMeterRegistry {
@@ -42,6 +45,10 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
     private final String DATA_FILTERED_ENTITIES_TOTAL_COUNTER_NAME = METRICS_PREFIX + "data.filtered.entities";
 
     private final String GTFSRT_ENTITIES_TOTAL = METRICS_PREFIX + "gtfsrt.entitites.total";
+    private final String GTFSRT_ENTITIES_BY_DATASET = METRICS_PREFIX + "gtfsrt.entitites.by.dataset";
+
+    private final Map<String, AtomicInteger> entityGaugeBydataset = new HashMap<>();
+
 
     public PrometheusMetricsService() {
         super(PrometheusConfig.DEFAULT);
@@ -69,6 +76,20 @@ public class PrometheusMetricsService extends PrometheusMeterRegistry {
             counter(DATA_PARSED_ENTITIES_TOTAL_COUNTER_NAME, counterTags).increment(total);
         }
     }
+
+    public void registerTotalGtfsRtEntitiesByDataset(String datasetId, String dataType, int count) {
+        AtomicInteger gauge = entityGaugeBydataset.computeIfAbsent(datasetId + dataType, key -> {
+            AtomicInteger ref = new AtomicInteger(0);
+            List<Tag> tags = List.of(
+                    new ImmutableTag("dataType", dataType),
+                    new ImmutableTag("datasetId", datasetId)
+            );
+            super.gauge(GTFSRT_ENTITIES_BY_DATASET, tags, ref, AtomicInteger::doubleValue);
+            return ref;
+        });
+        gauge.set(count);
+    }
+
 
     public void registerTotalGtfsRtEntities(int etCount, int vmCount, int sxCount) {
         for (Meter meter : this.getMeters()) {
