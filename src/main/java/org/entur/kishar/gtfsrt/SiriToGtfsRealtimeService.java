@@ -36,9 +36,7 @@ import org.springframework.stereotype.Service;
 import uk.org.siri.www.siri.*;
 import org.entur.kishar.utils.StopTimeUpdateComparator;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary.createFeedMessageBuilder;
@@ -100,10 +98,37 @@ public class SiriToGtfsRealtimeService {
         return status.toString();
     }
 
-    public Object getTripUpdates(String contentType, String datasetId, boolean useOriginalId) {
-        if (prometheusMetricsService != null) {
-            prometheusMetricsService.registerIncomingRequest("SIRI_ET", 1);
+    public Object getTripUpdatesAllDatasets(String contentType, boolean useOriginalId) {
+        return getTripUpdatesForDatasets(contentType,  tripUpdatesByDatasetId.keySet(), useOriginalId);
+
+    }
+
+    public Object getTripUpdatesForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
+        FeedMessage result = null;
+        for (String datasetId : datasets) {
+            FeedMessage datasetTripUpdates = getTripUpdatesForDataset(datasetId, useOriginalId);
+            result = mergeFeedMessages(result, datasetTripUpdates);
         }
+        return encodeFeedMessage(result, contentType);
+
+    }
+
+    private FeedMessage mergeFeedMessages(FeedMessage base, FeedMessage messageToAdd) {
+        if (base == null){
+            return messageToAdd;
+        }
+
+        List<FeedEntity> entities = new ArrayList<>();
+        entities.addAll(base.getEntityList());
+        entities.addAll(messageToAdd.getEntityList());
+
+        FeedMessage.Builder processedMessage = FeedMessage.newBuilder();
+        processedMessage.setHeader(base.getHeader());
+        processedMessage.addAllEntity(entities);
+        return processedMessage.build();
+    }
+
+    private FeedMessage getTripUpdatesForDataset(String datasetId, boolean useOriginalId){
         FeedMessage feedMessage = tripUpdatesByDatasetId.get(datasetId.toUpperCase());
         int nbOfMessageBeforeFiltering = 0;
         if (feedMessage == null) {
@@ -114,6 +139,19 @@ public class SiriToGtfsRealtimeService {
         feedMessage = filterDecreasingStopUpdates(feedMessage);
         LOG.info("TripUpdate - before filtering:{} - after filtering : {}", nbOfMessageBeforeFiltering, feedMessage.getEntityCount());
         feedMessage = idMapper.applyIdProcessingParameters(feedMessage, datasetId, useOriginalId);
+        return feedMessage;
+    }
+
+    public Object getTripUpdates(String contentType, String datasetId, boolean useOriginalId) {
+        if (prometheusMetricsService != null) {
+            prometheusMetricsService.registerIncomingRequest("SIRI_ET", 1);
+        }
+
+        if (datasetId.contains(",")){
+            return getTripUpdatesForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
+        }
+
+        FeedMessage feedMessage = getTripUpdatesForDataset( datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
@@ -181,10 +219,21 @@ public class SiriToGtfsRealtimeService {
         return !originalStu.hasDeparture() || !originalStu.getDeparture().hasTime() || originalStu.getDeparture().getTime() > lastDepartureTime;
     }
 
-    public Object getVehiclePositions(String contentType, String datasetId, boolean useOriginalId) {
-        if (prometheusMetricsService != null) {
-            prometheusMetricsService.registerIncomingRequest("SIRI_VM", 1);
+    public Object getVehiclePositionsForAllDatasets(String contentType, boolean useOriginalId){
+        return getVehiclePositionsForDatasets(contentType,  vehiclePositionsByDatasetId.keySet(), useOriginalId);
+
+    }
+
+    public Object getVehiclePositionsForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
+        FeedMessage result = null;
+        for (String datasetId : datasets) {
+            FeedMessage datasetTripUpdates = getVehiclePositionsForDataset(datasetId, useOriginalId);
+            result = mergeFeedMessages(result, datasetTripUpdates);
         }
+        return encodeFeedMessage(result, contentType);
+    }
+
+    public FeedMessage getVehiclePositionsForDataset(String datasetId, boolean useOriginalId) {
         FeedMessage feedMessage = null;
         if (datasetId != null) {
             feedMessage = vehiclePositionsByDatasetId.get(datasetId.toUpperCase());
@@ -194,13 +243,38 @@ public class SiriToGtfsRealtimeService {
             feedMessage = createFeedMessageBuilder().build();
         }
         feedMessage = idMapper.applyIdProcessingParameters(feedMessage, datasetId, useOriginalId);
+        return feedMessage;
+    }
+
+    public Object getVehiclePositions(String contentType, String datasetId, boolean useOriginalId) {
+        if (prometheusMetricsService != null) {
+            prometheusMetricsService.registerIncomingRequest("SIRI_VM", 1);
+        }
+
+        if (datasetId.contains(",")){
+            return getVehiclePositionsForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
+        }
+
+        FeedMessage feedMessage = getVehiclePositionsForDataset(datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
-    public Object getAlerts(String contentType, String datasetId, boolean useOriginalId) {
-        if (prometheusMetricsService != null) {
-            prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
+    public Object getAlertsForAllDatasets(String contentType, boolean useOriginalId){
+        return getAlertsForDatasets(contentType,  alertsByDatasetId.keySet(), useOriginalId);
+
+    }
+
+    public Object getAlertsForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
+        FeedMessage result = null;
+        for (String datasetId : datasets) {
+            FeedMessage datasetTripUpdates = getAlertsForDataset(datasetId, useOriginalId);
+            result = mergeFeedMessages(result, datasetTripUpdates);
         }
+        return encodeFeedMessage(result, contentType);
+    }
+
+
+    public FeedMessage getAlertsForDataset(String datasetId, boolean useOriginalId) {
 
         FeedMessage feedMessage;
         feedMessage = alertsByDatasetId.get(datasetId.toUpperCase());
@@ -208,6 +282,19 @@ public class SiriToGtfsRealtimeService {
             feedMessage = createFeedMessageBuilder().build();
         }
         feedMessage = idMapper.applyIdProcessingParameters(feedMessage, datasetId, useOriginalId);
+        return feedMessage;
+    }
+
+    public Object getAlerts(String contentType, String datasetId, boolean useOriginalId) {
+        if (prometheusMetricsService != null) {
+            prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
+        }
+
+        if (datasetId.contains(",")){
+            return getAlertsForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
+        }
+
+        FeedMessage feedMessage = getAlertsForDataset(datasetId,useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
