@@ -103,7 +103,9 @@ public class PubSubRoute extends RouteBuilder {
                     .process( p -> {
                         final byte[] data = (byte[]) p.getIn().getBody();
                         final SiriType siri = SiriType.parseFrom(data);
+                        log.info("Siri VM recu sur dataset : {}", p.getIn().getHeader("codespaceId").toString().toUpperCase());
                         Map<String, GtfsRtData> body = siriToGtfsRealtimeService.convertSiriVmToGtfsRt(siri, p.getIn().getHeader("codespaceId").toString().toUpperCase());
+                        log.info("apres convert.taille map : {}", body.size());
                         p.getOut().setBody(body);
                         p.getOut().setHeaders(p.getIn().getHeaders());
                     })

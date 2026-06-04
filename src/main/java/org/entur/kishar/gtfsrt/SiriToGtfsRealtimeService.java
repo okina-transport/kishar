@@ -369,6 +369,7 @@ public class SiriToGtfsRealtimeService {
 
     private void checkPostconditions(FeedEntityOrBuilder entity, String datasetId) {
         Preconditions.checkNotNull(entity, "entity must not be null");
+        LOG.info("dataset:{} - check entity not null");
         if (entity.hasAlert()) {
             for (var es : entity.getAlert().getInformedEntityList()) {
                 if (es.hasTrip()) {
@@ -376,25 +377,36 @@ public class SiriToGtfsRealtimeService {
                 }
             }
         } else if (entity.hasVehicle()) {
+            LOG.info("dataset:{} - starting vehicleCheck");
             if (entity.getVehicle().hasTrip()) {
                 checkPostconditions(entity.getVehicle().getTrip(), datasetId);
+            }else{
+                LOG.info("dataset:{} - no trip in vehicle");
             }
         } else if (entity.hasTripUpdate()) {
             checkPostconditions(entity.getTripUpdate().getTrip(), datasetId);
+        }else{
+            LOG.info("dataset:{} - alert/vehicle/tripupdate");
         }
     }
 
     private void checkPostconditions(TripDescriptor td, String datasetId) {
         Preconditions.checkNotNull(td, "TripDescriptor must not be null");
+        LOG.info("dataset:{} - trip desc check ok", datasetId);
         if (!td.hasTripId()) {
+            LOG.info("dataset:{} - no tripid", datasetId);
             Preconditions.checkState(td.hasRouteId() && td.hasDirectionId() && td.hasStartDate() && td.hasStartTime(), "if the trip_id field can't be provided, then route_id, direction_id, start_date, and start_time must all be provided");
         } else {
+            LOG.info("dataset:{} - trip id ok", datasetId);
             if (gtfsTripsService.isDatasetInCache(datasetId.toUpperCase())) {
+                LOG.info("dataset:{} - in cache", datasetId);
                 // this is mandatory to check if dataset is in cache because it will be in cache iff GTFS has been
                 // imported to this dataset
                 // without this check it would reject all GTFS-RT data on datasets where no GTFS import occurred
                 Preconditions.checkState(gtfsTripsService.existsTripByDatasetIdAndTripId(datasetId.toUpperCase(), td.getTripId()),
                         "trip_id %s not found in dataset %s", td.getTripId(), datasetId.toUpperCase());
+            }else{
+                LOG.info("dataset:{} - not in cache", datasetId);
             }
         }
     }
@@ -614,13 +626,21 @@ public class SiriToGtfsRealtimeService {
             return result;
         }
         ServiceDeliveryType serviceDelivery = siri.getServiceDelivery();
+        LOG.info("delivery. dataset:{}, vmCount:{}", datasetId,serviceDelivery.getVehicleMonitoringDeliveryCount());
         if (serviceDelivery != null && serviceDelivery.getVehicleMonitoringDeliveryCount() > 0) {
             for (VehicleMonitoringDeliveryStructure deliveryStructure : serviceDelivery.getVehicleMonitoringDeliveryList()) {
+
+                LOG.info("activity. dataset:{}, vmCount:{}", datasetId,deliveryStructure.getVehicleActivityCount());
+
                 if (deliveryStructure != null && deliveryStructure.getVehicleActivityCount() > 0) {
                     for (VehicleActivityStructure activity : deliveryStructure.getVehicleActivityList()) {
                         try {
                             checkPreconditions(activity);
+                            LOG.info("datasetId : {} - checkPrecond validees", datasetId);
                             VehiclePosition.Builder builder = gtfsRtMapper.convertSiriToGtfsRt(datasetId, activity);
+                            if (builder == null){
+                                LOG.info("datasetId : {} - builder null", datasetId);
+                            }
                             if (builder.getTimestamp() <= 0) {
                                 builder.setTimestamp(System.currentTimeMillis());
                             }
@@ -631,6 +651,7 @@ public class SiriToGtfsRealtimeService {
 
                             entity.setVehicle(builder);
                             checkPostconditions(entity, datasetId);
+                            LOG.info("datasetId : {} - postConditions validées", datasetId);
 
                             Duration timeToLive;
                             if (activity.hasValidUntilTime()) {
@@ -642,7 +663,7 @@ public class SiriToGtfsRealtimeService {
                             result.put(new CompositeKey(key, datasetId).asString(),
                                     new GtfsRtData(entity.build().toByteArray(), timeToLive));
                         } catch (Exception e) {
-                            LOG.debug("Failed parsing vehicle activity", e);
+                            LOG.info("Failed parsing vehicle activity", e);
                         }
                     }
 

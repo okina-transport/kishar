@@ -288,6 +288,8 @@ public class GtfsRtMapper {
             }
 
             return vp;
+        }else{
+            log.info("datasetId : {} - no location", datasetId);
         }
 
         return null;

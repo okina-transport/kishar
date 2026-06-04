@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVRecord;
 import org.entur.kishar.utils.CSVUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Getter
 public class GtfsTripsService {
+
+
 
     public static final String CSV_HEADER_TRIP_ID = "trip_id";
 
