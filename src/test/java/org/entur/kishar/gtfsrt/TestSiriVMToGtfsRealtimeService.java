@@ -17,7 +17,6 @@ import java.util.Map;
 
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
@@ -48,7 +47,6 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -114,7 +112,6 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -155,7 +152,6 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         GtfsRealtime.FeedMessage feedMessage = getFeedMessage(rtService, datasetId);
@@ -191,7 +187,6 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         redisMap.putAll(siriBnrMap);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         Object vehiclePositions = rtService.getVehiclePositions("application/json", "TEST", true);
@@ -234,7 +229,6 @@ class TestSiriVMToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         Object vehiclePositions = rtService.getVehiclePositions("application/json", datasetId, true);

@@ -2,7 +2,6 @@ package org.entur.kishar.gtfsrt;
 
 import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
-import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
@@ -10,20 +9,14 @@ import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.www.siri.*;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.entur.kishar.gtfsrt.Helper.createFramedVehicleJourneyRefStructure;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest{
+class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testVMMergedDatasets() {
@@ -43,7 +36,6 @@ public class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest{
         redisMap = addToRedisMap(redisMap, siri2, rtService, datasetId2);
 
         when(redisService.readGtfsRtMap(RedisService.Type.VEHICLE_POSITION)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
         rtService.writeOutput();
 
         // Check data is returned for dataset 1
@@ -78,7 +70,7 @@ public class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest{
         assertEquals(2, entityList3.size());
 
         // Check data is returned for dataset 1 and dataset 2 (comma list)
-        Object vehiclePositions4 = rtService.getVehiclePositions("application/json", datasetId1 + "," + datasetId2,true);
+        Object vehiclePositions4 = rtService.getVehiclePositions("application/json", datasetId1 + "," + datasetId2, true);
         assertNotNull(vehiclePositions4);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, vehiclePositions4);
         GtfsRealtime.FeedMessage feedMessage4 = (GtfsRealtime.FeedMessage) vehiclePositions4;
@@ -87,8 +79,8 @@ public class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest{
     }
 
 
-    private Map<String, byte[]> getRedisMap(String datasetId ,
-            SiriToGtfsRealtimeService realtimeService, SiriType siri
+    private Map<String, byte[]> getRedisMap(String datasetId,
+                                            SiriToGtfsRealtimeService realtimeService, SiriType siri
     ) {
         Map<String, GtfsRtData> gtfsRt = realtimeService.convertSiriVmToGtfsRt(siri, datasetId);
         Map<String, byte[]> redisMap = Maps.newHashMap();
@@ -107,8 +99,6 @@ public class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest{
         }
         return redisMap;
     }
-
-
 
 
     private SiriType createSiriVmDelivery(String lineRefValue, double latitude, double longitude, String datedVehicleJourneyRef, String vehicleRefValue, String datasetId) {
