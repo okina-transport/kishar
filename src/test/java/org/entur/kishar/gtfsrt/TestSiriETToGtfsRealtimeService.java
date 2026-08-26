@@ -7,20 +7,19 @@ import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
+import org.entur.kishar.utils.ObjectType;
 import org.junit.jupiter.api.Test;
-import org.mockito.stubbing.Answer;
 import uk.org.siri.www.siri.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.entur.kishar.gtfsrt.Helper.createFramedVehicleJourneyRefStructure;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -39,8 +38,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
@@ -84,11 +82,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(redisService.handleFlexibleLine(any())).thenAnswer((Answer<String>) invocation -> {
-            Object[] args = invocation.getArguments();
-            return (String) args[0];
-        });
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
@@ -157,8 +151,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
@@ -231,8 +224,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         redisMap.putAll(siriBnrMap);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", "RUT", true);
@@ -290,8 +282,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
@@ -325,8 +316,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(localRtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         localRtService.writeOutput();
 
         Object tripUpdates = localRtService.getTripUpdates("application/json", datasetId, true);
@@ -363,7 +353,6 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
         when(redisService.readIdMap(RedisService.Type.ID_MAPPING, "TST:Quay:1234-0")).thenReturn("MOBIITI:Quay:1234-0");
-        when(redisService.handleFlexibleLine(lineRefValue)).thenReturn(lineRefValue);
 
         localRtService.writeOutput();
 
@@ -399,8 +388,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, true);
@@ -424,8 +412,7 @@ class TestSiriETToGtfsRealtimeService extends SiriToGtfsRealtimeServiceTest {
         Map<String, byte[]> redisMap = getRedisMap(rtService, siri, datasetId);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
         rtService.writeOutput();
 
         Object tripUpdates = rtService.getTripUpdates("application/json", datasetId, false);

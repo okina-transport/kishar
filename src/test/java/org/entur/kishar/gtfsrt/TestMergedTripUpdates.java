@@ -7,27 +7,23 @@ import com.google.protobuf.util.Timestamps;
 import com.google.transit.realtime.GtfsRealtime;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
+import org.entur.kishar.utils.ObjectType;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.www.siri.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.entur.kishar.gtfsrt.Helper.createFramedVehicleJourneyRefStructure;
 import static org.entur.kishar.gtfsrt.Helper.createLineRef;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest{
+class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest {
 
     @Test
     void testMergedTripUpdates() throws IOException {
@@ -45,8 +41,7 @@ public class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest{
         redisMap = addToRedisMap(redisMap, rtService, siriDat2, dat2);
 
         when(redisService.readGtfsRtMap(RedisService.Type.TRIP_UPDATE)).thenReturn(redisMap);
-        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new HashMap<>());
-        when(redisService.handleFlexibleLine(any())).thenAnswer(invocation -> invocation.getArguments()[0]);
+        when(subscriptionConfig.getIdParametersForDataset(anyString())).thenReturn(new EnumMap<>(ObjectType.class));
 
         // GTFS-RT is produced asynchronously - should be empty at first
 
@@ -91,7 +86,7 @@ public class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest{
 
         // CHECK if there is data for dataset DAT1 and DAT2 cumulated (called by ALL route)
 
-        Object tripUpdatesDatCumulated = rtService.getTripUpdatesAllDatasets("application/json",  true);
+        Object tripUpdatesDatCumulated = rtService.getTripUpdatesAllDatasets("application/json", true);
         assertNotNull(tripUpdatesDatCumulated);
         assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdatesDatCumulated);
 
@@ -193,7 +188,7 @@ public class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest{
     }
 
     private Map<String, byte[]> addToRedisMap(Map<String, byte[]> redisMap, SiriToGtfsRealtimeService rtService, SiriType siri, String datasetId) {
-        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriEtToGtfsRt(siri, datasetId);        
+        Map<String, GtfsRtData> gtfsRt = rtService.convertSiriEtToGtfsRt(siri, datasetId);
         for (String key : gtfsRt.keySet()) {
             byte[] data = gtfsRt.get(key).getData();
             redisMap.put(key, data);

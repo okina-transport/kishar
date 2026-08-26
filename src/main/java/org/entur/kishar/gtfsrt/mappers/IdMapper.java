@@ -60,7 +60,7 @@ public class IdMapper {
                     otToIpp.get(ObjectType.OPERATOR)));
         }
         if (builder.hasRouteId()) {
-            builder.setRouteId(applyIdProcessingParameterForLine(builder.getRouteId(), otToIpp.get(ObjectType.LINE)));
+            builder.setRouteId(applyIdProcessingParameter(builder.getRouteId(), otToIpp.get(ObjectType.LINE)));
         }
         if (builder.hasStopId()) {
             builder.setStopId(applyIdProcessingParameterForStop(builder.getStopId(), otToIpp.get(ObjectType.STOP),
@@ -109,7 +109,7 @@ public class IdMapper {
     private void applyIdProcessingParameters(GtfsRealtime.TripDescriptor.Builder builder, Map<ObjectType,
             IdProcessingParameters> otToIpp) {
         if (builder.hasRouteId()) {
-            builder.setRouteId(applyIdProcessingParameterForLine(builder.getRouteId(), otToIpp.get(ObjectType.LINE)));
+            builder.setRouteId(applyIdProcessingParameter(builder.getRouteId(), otToIpp.get(ObjectType.LINE)));
         }
         if (builder.hasTripId()) {
             builder.setTripId(applyIdProcessingParameter(builder.getTripId(), otToIpp.get(ObjectType.VEHICLE_JOURNEY)));
@@ -122,12 +122,6 @@ public class IdMapper {
             return ipp.applyTransformationToString(id);
         }
         return id;
-    }
-
-    private String applyIdProcessingParameterForLine(String lineId, IdProcessingParameters ipp) {
-        lineId = applyIdProcessingParameter(lineId, ipp);
-        lineId = redisService.handleFlexibleLine(lineId);
-        return lineId;
     }
 
     private String applyIdProcessingParameterForStop(String stopId, IdProcessingParameters ipp, boolean useOriginalId) {

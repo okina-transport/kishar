@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,7 +45,6 @@ class IdMapperTest {
     @Test
     void test_applyIdProcessingParameters_whenThereIsNoIppForDataset_thenDoNothing() {
         // Arrange
-        when(redisService.handleFlexibleLine(any())).then(invocation -> invocation.getArguments()[0]);
         when(subscriptionConfig.getIdParametersForDataset(DATASET)).thenReturn(null);
         GtfsRealtime.FeedMessage message =
                 GtfsRealtime.FeedMessage.newBuilder()
@@ -115,7 +113,6 @@ class IdMapperTest {
         ippOperator.setOutputPrefixToAdd(OUTPUT_PREFIX_TO_ADD_OPERATOR);
         ippOperator.setOutputSuffixToAdd(OUTPUT_SUFFIX_TO_ADD);
 
-        when(redisService.handleFlexibleLine(any())).then(invocation -> invocation.getArguments()[0]);
         when(subscriptionConfig.getIdParametersForDataset(DATASET)).thenReturn(
                 Map.of(ObjectType.STOP, ippStop,
                         ObjectType.LINE, ippLine,
@@ -210,7 +207,6 @@ class IdMapperTest {
         ippOperator.setOutputPrefixToAdd(OUTPUT_PREFIX_TO_ADD_OPERATOR);
         ippOperator.setOutputSuffixToAdd(OUTPUT_SUFFIX_TO_ADD);
 
-        when(redisService.handleFlexibleLine(any())).then(invocation -> invocation.getArguments()[0]);
         when(subscriptionConfig.getIdParametersForDataset(DATASET)).thenReturn(
                 Map.of(ObjectType.STOP, ippStop,
                         ObjectType.LINE, ippLine,
