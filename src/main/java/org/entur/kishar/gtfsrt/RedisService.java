@@ -1,7 +1,6 @@
 package org.entur.kishar.gtfsrt;
 
 import com.google.common.collect.Maps;
-import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.transit.realtime.GtfsRealtime;
 import lombok.Getter;
@@ -9,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
 import org.entur.kishar.utils.BlobStoreService;
-import org.entur.kishar.utils.GTFSRTUtils;
+import org.entur.kishar.utils.StopTimeUpdateComparator;
 import org.redisson.Redisson;
 import org.redisson.api.RMapCache;
 import org.redisson.api.RedissonClient;
@@ -21,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
-import org.entur.kishar.utils.StopTimeUpdateComparator;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -30,6 +28,8 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import static java.lang.Math.max;
 
 @Service
 @Configuration
@@ -140,7 +140,7 @@ public class RedisService {
 
             byte[] existingJourney = gtfsRtMap.get(key);
             if (existingJourney == null) {
-                //no existing journey. puting the new one in cache
+                // no existing journey. puting the new one in cache
                 gtfsRtMap.put(key, gtfsRtDataBytes, timeToLive, TimeUnit.SECONDS);
             } else {
 
@@ -151,10 +151,20 @@ public class RedisService {
                 mergedEntity.setTripUpdate(buildMergedTripUpdate(entity, incomingTripUpdate));
                 mergedEntity.setId(entity.getId());
 
+                List<Long> times = new ArrayList<>();
 
-                Duration timeToLiveDur = Duration.newBuilder().setSeconds(timeToLive).build();
-                GtfsRtData mergedGtfsData = new GtfsRtData(mergedEntity.build().toByteArray(), timeToLiveDur);
-                gtfsRtMap.put(key, mergedGtfsData.getData(), timeToLive, TimeUnit.SECONDS);
+                for (var stu : mergedEntity.getTripUpdate().getStopTimeUpdateList()) {
+                    if (stu.hasArrival() && stu.getArrival().hasTime()) {
+                        times.add(stu.getArrival().getTime());
+                    }
+                    if (stu.hasDeparture() && stu.getDeparture().hasTime()) {
+                        times.add(stu.getDeparture().getTime());
+                    }
+                }
+
+                timeToLive = max(times.stream().max(Long::compare).orElse(-1L), timeToLive);
+
+                gtfsRtMap.put(key, mergedEntity.build().toByteArray(), timeToLive, TimeUnit.SECONDS);
             }
 
         } catch (InvalidProtocolBufferException e) {
