@@ -15,6 +15,7 @@
 package org.entur.kishar.gtfsrt;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.protobuf.Duration;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -28,13 +29,13 @@ import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.entur.kishar.gtfsrt.mappers.GtfsRtMapper;
 import org.entur.kishar.gtfsrt.mappers.IdMapper;
 import org.entur.kishar.metrics.PrometheusMetricsService;
+import org.entur.kishar.utils.StopTimeUpdateComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import uk.org.siri.www.siri.*;
-import org.entur.kishar.utils.StopTimeUpdateComparator;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -99,7 +100,7 @@ public class SiriToGtfsRealtimeService {
     }
 
     public Object getTripUpdatesAllDatasets(String contentType, boolean useOriginalId) {
-        return getTripUpdatesForDatasets(contentType,  tripUpdatesByDatasetId.keySet(), useOriginalId);
+        return getTripUpdatesForDatasets(contentType, tripUpdatesByDatasetId.keySet(), useOriginalId);
 
     }
 
@@ -114,7 +115,7 @@ public class SiriToGtfsRealtimeService {
     }
 
     private FeedMessage mergeFeedMessages(FeedMessage base, FeedMessage messageToAdd) {
-        if (base == null){
+        if (base == null) {
             return messageToAdd;
         }
 
@@ -128,12 +129,12 @@ public class SiriToGtfsRealtimeService {
         return processedMessage.build();
     }
 
-    private FeedMessage getTripUpdatesForDataset(String datasetId, boolean useOriginalId){
+    private FeedMessage getTripUpdatesForDataset(String datasetId, boolean useOriginalId) {
         FeedMessage feedMessage = tripUpdatesByDatasetId.get(datasetId.toUpperCase());
         int nbOfMessageBeforeFiltering = 0;
         if (feedMessage == null) {
             feedMessage = createFeedMessageBuilder().build();
-        }else{
+        } else {
             nbOfMessageBeforeFiltering = feedMessage.getEntityCount();
         }
         feedMessage = filterDecreasingStopUpdates(feedMessage);
@@ -147,11 +148,11 @@ public class SiriToGtfsRealtimeService {
             prometheusMetricsService.registerIncomingRequest("SIRI_ET", 1);
         }
 
-        if (datasetId.contains(",")){
+        if (datasetId.contains(",")) {
             return getTripUpdatesForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
         }
 
-        FeedMessage feedMessage = getTripUpdatesForDataset( datasetId, useOriginalId);
+        FeedMessage feedMessage = getTripUpdatesForDataset(datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
@@ -219,8 +220,8 @@ public class SiriToGtfsRealtimeService {
         return !originalStu.hasDeparture() || !originalStu.getDeparture().hasTime() || originalStu.getDeparture().getTime() > lastDepartureTime;
     }
 
-    public Object getVehiclePositionsForAllDatasets(String contentType, boolean useOriginalId){
-        return getVehiclePositionsForDatasets(contentType,  vehiclePositionsByDatasetId.keySet(), useOriginalId);
+    public Object getVehiclePositionsForAllDatasets(String contentType, boolean useOriginalId) {
+        return getVehiclePositionsForDatasets(contentType, vehiclePositionsByDatasetId.keySet(), useOriginalId);
 
     }
 
@@ -251,7 +252,7 @@ public class SiriToGtfsRealtimeService {
             prometheusMetricsService.registerIncomingRequest("SIRI_VM", 1);
         }
 
-        if (datasetId.contains(",")){
+        if (datasetId.contains(",")) {
             return getVehiclePositionsForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
         }
 
@@ -259,8 +260,8 @@ public class SiriToGtfsRealtimeService {
         return encodeFeedMessage(feedMessage, contentType);
     }
 
-    public Object getAlertsForAllDatasets(String contentType, boolean useOriginalId){
-        return getAlertsForDatasets(contentType,  alertsByDatasetId.keySet(), useOriginalId);
+    public Object getAlertsForAllDatasets(String contentType, boolean useOriginalId) {
+        return getAlertsForDatasets(contentType, alertsByDatasetId.keySet(), useOriginalId);
 
     }
 
@@ -290,11 +291,11 @@ public class SiriToGtfsRealtimeService {
             prometheusMetricsService.registerIncomingRequest("SIRI_SX", 1);
         }
 
-        if (datasetId.contains(",")){
+        if (datasetId.contains(",")) {
             return getAlertsForDatasets(contentType, new HashSet<>(Arrays.asList(datasetId.split(","))), useOriginalId);
         }
 
-        FeedMessage feedMessage = getAlertsForDataset(datasetId,useOriginalId);
+        FeedMessage feedMessage = getAlertsForDataset(datasetId, useOriginalId);
         return encodeFeedMessage(feedMessage, contentType);
     }
 
@@ -430,10 +431,9 @@ public class SiriToGtfsRealtimeService {
         }
 
 
-        tripUpdatesByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"TRIP_UPDATE", entry.getValue().getEntityCount()));
-        vehiclePositionsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"VEHICLE_POSITION", entry.getValue().getEntityCount()));
-        alertsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(),"ALERT", entry.getValue().getEntityCount()));
-
+        tripUpdatesByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(), "TRIP_UPDATE", entry.getValue().getEntityCount()));
+        vehiclePositionsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(), "VEHICLE_POSITION", entry.getValue().getEntityCount()));
+        alertsByDatasetId.entrySet().forEach(entry -> prometheusMetricsService.registerTotalGtfsRtEntitiesByDataset(entry.getKey(), "ALERT", entry.getValue().getEntityCount()));
 
 
         LOG.info("Wrote output in {} ms: {} alerts, {} vehicle-positions, {} trip-updates",
@@ -782,20 +782,29 @@ public class SiriToGtfsRealtimeService {
 
 
     private Timestamp getExpirationDate(MonitoredStopVisitStructure monitoredStopVisitStructure) {
-
-
         MonitoredCallStructure monitoredCall = monitoredStopVisitStructure.getMonitoredVehicleJourney().getMonitoredCall();
 
+        // from https://gtfs.org/documentation/realtime/reference/#message-tripupdate
+        // Note that the update can describe a trip that has already completed.
+        // To this end, it is enough to provide an update for the last stop of the trip.
+        // If the time of arrival at the last stop is in the past, the client will conclude that the whole trip is in
+        // the past (it is possible, although inconsequential, to also provide updates for preceding stops).
+        // This option is most relevant for a trip that has completed ahead of schedule, but according to the schedule,
+        // the trip is still proceeding at the current time.
+        // Removing the updates for this trip could make the client assume that the trip is still proceeding.
+        List<Timestamp> timestamps = Lists.newArrayList();
+
         if (monitoredCall.hasExpectedArrivalTime()) {
-            return monitoredCall.getExpectedArrivalTime();
+            timestamps.add(monitoredCall.getExpectedArrivalTime());
         } else if (monitoredCall.hasAimedArrivalTime()) {
-            return monitoredCall.getAimedArrivalTime();
+            timestamps.add(monitoredCall.getAimedArrivalTime());
         } else if (monitoredCall.hasExpectedDepartureTime()) {
-            return monitoredCall.getExpectedDepartureTime();
+            timestamps.add(monitoredCall.getExpectedDepartureTime());
         } else if (monitoredCall.hasAimedDepartureTime()) {
-            return monitoredCall.getAimedDepartureTime();
+            timestamps.add(monitoredCall.getAimedDepartureTime());
         }
-        return null;
+
+        return timestamps.stream().max(Timestamps.comparator()).orElse(null);
     }
 
     private void checkPreconditions(MonitoredStopVisitStructure monitoredStopVisitStructure) {
