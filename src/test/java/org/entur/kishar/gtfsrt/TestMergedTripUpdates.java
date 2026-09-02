@@ -26,6 +26,26 @@ import static org.mockito.Mockito.when;
 class TestMergedTripUpdates extends SiriToGtfsRealtimeServiceTest {
 
     @Test
+    void testGetTripUpdatesAllDatasetsWithEmptyCacheReturnsEmptyFeedMessage() throws IOException {
+        // No data has been published to any dataset - cache is empty
+
+        Object tripUpdates = rtService.getTripUpdatesAllDatasets("application/json", false);
+        assertNotNull(tripUpdates);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, tripUpdates);
+
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) tripUpdates;
+        assertTrue(feedMessage.getEntityList().isEmpty());
+
+        // Assert binary format also returns a body instead of null
+        Object binaryTripUpdates = rtService.getTripUpdatesAllDatasets(null, false);
+        assertNotNull(binaryTripUpdates);
+        assertInstanceOf(byte[].class, binaryTripUpdates);
+
+        GtfsRealtime.FeedMessage byteArrayFeedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) binaryTripUpdates);
+        assertTrue(byteArrayFeedMessage.getEntityList().isEmpty());
+    }
+
+    @Test
     void testMergedTripUpdates() throws IOException {
         String lineRefValue = "TST:Line:1234";
         int stopCount = 5;
