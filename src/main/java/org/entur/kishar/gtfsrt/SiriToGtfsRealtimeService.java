@@ -25,6 +25,7 @@ import com.google.transit.realtime.GtfsRealtime.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.entur.kishar.gtfsrt.domain.CompositeKey;
 import org.entur.kishar.gtfsrt.domain.GtfsRtData;
+import org.entur.kishar.gtfsrt.helpers.GtfsRealtimeLibrary;
 import org.entur.kishar.gtfsrt.helpers.SiriLibrary;
 import org.entur.kishar.gtfsrt.mappers.GtfsRtMapper;
 import org.entur.kishar.gtfsrt.mappers.IdMapper;
@@ -105,7 +106,7 @@ public class SiriToGtfsRealtimeService {
     }
 
     public Object getTripUpdatesForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
-        FeedMessage result = null;
+        FeedMessage result = GtfsRealtimeLibrary.createFeedMessageBuilder().build();
         for (String datasetId : datasets) {
             FeedMessage datasetTripUpdates = getTripUpdatesForDataset(datasetId, useOriginalId);
             result = mergeFeedMessages(result, datasetTripUpdates);
