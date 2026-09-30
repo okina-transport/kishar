@@ -22,7 +22,6 @@ import com.google.transit.realtime.GtfsRealtime.Alert.Effect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import uk.org.ifopt.www.ifopt.StopPlaceRefStructure;
 import uk.org.siri.www.siri.*;
 
 import java.text.SimpleDateFormat;
@@ -38,7 +37,6 @@ public class AlertFactory {
 
     private static final Logger _log = LoggerFactory.getLogger(AlertFactory.class);
     private static final SimpleDateFormat DATE_FORMATTER = new SimpleDateFormat("yyyyMMdd");
-    private static final SimpleDateFormat TIME_FORMATTER = new SimpleDateFormat("HH:mm:ss");
 
     public Alert.Builder createAlertFromSituation(
             PtSituationElementStructure ptSituation) {
@@ -57,11 +55,11 @@ public class AlertFactory {
     }
 
     private void handleSeverity(PtSituationElementStructure ptSituation, Alert.Builder alert) {
-        if (ptSituation.getSeverity() == null){
+        if (ptSituation.getSeverity() == null) {
             return;
         }
 
-        switch (ptSituation.getSeverity()){
+        switch (ptSituation.getSeverity()) {
             case SEVERITY_ENUMERATION_UNKNOWN:
             case SEVERITY_ENUMERATION_UNDEFINED:
                 alert.setSeverityLevel(Alert.SeverityLevel.UNKNOWN_SEVERITY);
@@ -111,7 +109,7 @@ public class AlertFactory {
     }
 
     private void handleValidityPeriod(PtSituationElementStructure ptSituation,
-                                   Alert.Builder serviceAlert) {
+                                      Alert.Builder serviceAlert) {
 
         if (!ptSituation.getValidityPeriodList().isEmpty()) {
             final List<HalfOpenTimestampOutputRangeStructure> validityPeriodList = ptSituation.getValidityPeriodList();
@@ -124,7 +122,7 @@ public class AlertFactory {
                     timeRange.setEnd(validityPeriod.getEndTime().getSeconds());
                 }
 
-                if (validityPeriod.hasStartTime() && !validityPeriod.hasEndTime()){
+                if (validityPeriod.hasStartTime() && !validityPeriod.hasEndTime()) {
                     timeRange.setEnd(MAX_END_DATE);
                 }
 
@@ -136,7 +134,7 @@ public class AlertFactory {
     }
 
     private void handleReasons(PtSituationElementStructure ptSituation,
-                              Alert.Builder serviceAlert) {
+                               Alert.Builder serviceAlert) {
 
         Cause cause = getReasonAsCause(ptSituation);
         if (cause != null) {
@@ -145,30 +143,27 @@ public class AlertFactory {
     }
 
     private Cause getReasonAsCause(PtSituationElementStructure ptSituation) {
-        if (ptSituation.getEnvironmentReason() != null &&
-            ptSituation.getEnvironmentReasonValue() > 0) {
+        if (!ptSituation.getEnvironmentReason().isEmpty()) {
             return Cause.WEATHER;
         }
-        if (ptSituation.getEquipmentReason() != null &&
-            ptSituation.getEquipmentReasonValue() > 0) {
+        if (!ptSituation.getEquipmentReason().isEmpty()) {
             switch (ptSituation.getEquipmentReason()) {
-                case EQUIPMENT_REASON_ENUMERATION_CONSTRUCTION_WORK:
+                case "constructionWork":
                     return Cause.CONSTRUCTION;
-                case EQUIPMENT_REASON_ENUMERATION_TECHNICAL_PROBLEM:
+                case "technicalProblem":
                     return Cause.TECHNICAL_PROBLEM;
-                case EQUIPMENT_REASON_ENUMERATION_CLOSED_FOR_MAINTENANCE:
-                case EQUIPMENT_REASON_ENUMERATION_MAINTENANCE_WORK:
-                case EQUIPMENT_REASON_ENUMERATION_EMERGENCY_ENGINEERING_WORK:
-                case EQUIPMENT_REASON_ENUMERATION_LATE_FINISH_TO_ENGINEERING_WORK:
-                case EQUIPMENT_REASON_ENUMERATION_REPAIR_WORK:
+                case "closedForMaintenance":
+                case "maintenanceWork":
+                case "emergencyEngineeringWork":
+                case "lateFinishToEngineeringWork":
+                case "repairWork":
                     return Cause.MAINTENANCE;
             }
         }
-        if (ptSituation.getPersonnelReason() != null &&
-            ptSituation.getPersonnelReasonValue() > 0) {
+        if (!ptSituation.getPersonnelReason().isEmpty()) {
             switch (ptSituation.getPersonnelReason()) {
-                case PERSONNEL_REASON_ENUMERATION_INDUSTRIAL_ACTION:
-                case PERSONNEL_REASON_ENUMERATION_UNOFFICIAL_INDUSTRIAL_ACTION:
+                case "industrialAction":
+                case "unofficialIndustrialAction":
                     return Cause.STRIKE;
             }
             return Cause.OTHER_CAUSE;
@@ -177,31 +172,30 @@ public class AlertFactory {
          * There are really so many possibilities here that it's tricky to translate
          * them all
          */
-        if (ptSituation.getMiscellaneousReason() != null &&
-            ptSituation.getMiscellaneousReasonValue() > 0) {
+        if (!ptSituation.getMiscellaneousReason().isEmpty()) {
             switch (ptSituation.getMiscellaneousReason()) {
-                case MISCELLANEOUS_REASON_ENUMERATION_UNKNOWN:
+                case "unknown":
                     return Cause.UNKNOWN_CAUSE;
-                case MISCELLANEOUS_REASON_ENUMERATION_UNDEFINED_PROBLEM:
+                case "undefinedProblem":
                     return Cause.OTHER_CAUSE;
-                case MISCELLANEOUS_REASON_ENUMERATION_ACCIDENT:
-                case MISCELLANEOUS_REASON_ENUMERATION_COLLISION:
+                case "accident":
+                case "collision":
                     return Cause.ACCIDENT;
-                case MISCELLANEOUS_REASON_ENUMERATION_HOLIDAY:
+                case "holiday":
                     return Cause.HOLIDAY;
-                case MISCELLANEOUS_REASON_ENUMERATION_DEMONSTRATION:
-                case MISCELLANEOUS_REASON_ENUMERATION_MARCH:
+                case "demonstration":
+                case "march":
                     return Cause.DEMONSTRATION;
-                case MISCELLANEOUS_REASON_ENUMERATION_PERSON_ILL_ON_VEHICLE:
-                case MISCELLANEOUS_REASON_ENUMERATION_FATALITY:
-                case MISCELLANEOUS_REASON_ENUMERATION_INCIDENT:
+                case "personIllOnVehicle":
+                case "fatality":
+                case "incident":
                     return Cause.MEDICAL_EMERGENCY;
-                case MISCELLANEOUS_REASON_ENUMERATION_POLICE_ACTIVITY:
-                case MISCELLANEOUS_REASON_ENUMERATION_POLICE_REQUEST:
-                case MISCELLANEOUS_REASON_ENUMERATION_BOMB_ALERT:
-                case MISCELLANEOUS_REASON_ENUMERATION_CIVIL_EMERGENCY:
-                case MISCELLANEOUS_REASON_ENUMERATION_EMERGENCY_SERVICES:
-                case MISCELLANEOUS_REASON_ENUMERATION_EMERGENCY_SERVICES_CALL:
+                case "policeActivity":
+                case "policeRequest":
+                case "bombAlert":
+                case "civilEmergency":
+                case "emergencyServices":
+                case "emergencyServicesCall":
                     return Cause.POLICE_ACTIVITY;
             }
         }
@@ -275,7 +269,7 @@ public class AlertFactory {
                     String startDate = null;
                     if (affectedVehicleJourney.hasOriginAimedDepartureTime()) {
                         final Timestamp originAimedDepartureTime = affectedVehicleJourney.getOriginAimedDepartureTime();
-                        Date date = new Date(originAimedDepartureTime.getSeconds()*1000);
+                        Date date = new Date(originAimedDepartureTime.getSeconds() * 1000);
 
                         startDate = DATE_FORMATTER.format(date);
                     }
@@ -296,7 +290,7 @@ public class AlertFactory {
                         }
                     }
 
-                    if (affectedVehicleJourney.hasFramedVehicleJourneyRef()){
+                    if (affectedVehicleJourney.hasFramedVehicleJourneyRef()) {
                         final FramedVehicleJourneyRefStructure framedVehicleJourneyRef = affectedVehicleJourney.getFramedVehicleJourneyRef();
                         final String datedVehicleJourneyRef = framedVehicleJourneyRef.getDatedVehicleJourneyRef();
                         final DataFrameRefStructure dataFrameRef = framedVehicleJourneyRef.getDataFrameRef();
@@ -305,7 +299,7 @@ public class AlertFactory {
                         tripDescriptor.setTripId(datedVehicleJourneyRef);
                         if (dataFrameRef != null) {
                             // Convert YYYY-MM-MM to YYYYMMDD
-                            String dataFrameStr = dataFrameRef.getValue().replaceAll("-","");
+                            String dataFrameStr = dataFrameRef.getValue().replaceAll("-", "");
                             tripDescriptor.setStartDate(dataFrameStr);
                         }
                         tripDescriptors.add(tripDescriptor.build());
@@ -319,9 +313,9 @@ public class AlertFactory {
                                     for (AffectedRouteStructure.StopPointsType.SequenceWrapper_StopPointsType stopPoint : stopPoints.getSequenceWrapperList()) {
                                         if (stopPoint.hasAffectedStopPoint()) {
                                             final String stopId = stopPoint
-                                                .getAffectedStopPoint()
-                                                .getStopPointRef()
-                                                .getValue();
+                                                    .getAffectedStopPoint()
+                                                    .getStopPointRef()
+                                                    .getValue();
 
                                             stopIds.add(stopId);
                                         }
