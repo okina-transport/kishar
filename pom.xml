@@ -14,7 +14,7 @@
   ~ limitations under the Licence.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
@@ -37,6 +37,7 @@
         <gtfs.realtime-bindings.version>1.0.0-mobi-iti</gtfs.realtime-bindings.version>
         <micrometer-version>1.15.4</micrometer-version>
         <jetty-version>12.1.1</jetty-version>
+        <protobuf.version>4.36.2</protobuf.version>
 
     </properties>
 
@@ -140,7 +141,6 @@
             </dependency>
 
 
-
         </dependencies>
 
 
@@ -217,26 +217,25 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-protobuf-mapper</artifactId>
-            <version>1.0.5-mobi-iti</version>
+            <version>1.0.6-mobi-iti</version>
         </dependency>
 
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
+            <version>${protobuf.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>${protobuf.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-
-        </dependency>
-
 
         <dependency>
             <groupId>org.apache.camel</groupId>
