@@ -17,15 +17,13 @@ package org.entur.kishar.gtfsrt.helpers;
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
 
-import java.time.Instant;
-
 public class SiriLibrary {
-    private SiriLibrary() {
-    }
 
     public static Timestamp getCurrentTime() {
-        Instant now = Instant.now();
-        return Timestamp.newBuilder().setSeconds(now.getEpochSecond()).setNanos(now.getNano()).build();
+        long millis = System.currentTimeMillis();
+        Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+                .setNanos((int) ((millis % 1000) * 1000000)).build();
+        return timestamp;
     }
 
     public static Timestamp getLatestTimestamp(Timestamp t1, Timestamp t2) {
