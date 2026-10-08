@@ -42,6 +42,8 @@ public class RedisService {
     private final boolean redisEnabled;
     private final BlobStoreService blobStoreService;
     private final RedissonClient redisson;
+    // In-memory copy of the ID_MAPPING Redis map, to avoid a Redis round-trip per stop when serving GTFS-RT feeds
+    private volatile Map<String, String> idMappingCache = Map.of();
 
     public RedisService(@Value("${kishar.redis.enabled:false}") boolean redisEnabled, @Value("${kishar.redis.host:}") String host, @Value("${kishar.redis.port:}") String port, @Value("${kishar.mapping.stopplaces.update.frequency.min:60}") int updateFrequency, @Value("${kishar.mapping.quays.gcs.path}") String quayMappingPath, @Value("${kishar.mapping.stopplaces.gcs.path}") String stopPlaceMappingPath, BlobStoreService blobStoreService) {
         this.redisEnabled = redisEnabled;
@@ -57,6 +59,7 @@ public class RedisService {
             redisson = Redisson.create(config);
 
             ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+            executor.execute(this::refreshIdMappingCache);
             executor.scheduleAtFixedRate(this::updateIdMapping, 1, updateFrequency, TimeUnit.MINUTES);
         } else {
             redisson = null;
@@ -82,11 +85,26 @@ public class RedisService {
         LOG.info("Before - ID_MAPPING: {}", redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
         redisson.getMap(Type.ID_MAPPING.mapIdentifier).clear();
         LOG.info("After - ID_MAPPING: {}", redisson.getMap(Type.ID_MAPPING.mapIdentifier).size());
+        idMappingCache = Map.of();
     }
 
     private void updateIdMapping() {
-        idMapping(quayMappingPath);
-        idMapping(stopPlaceMappingPath);
+        try {
+            idMapping(quayMappingPath);
+            idMapping(stopPlaceMappingPath);
+        } finally {
+            refreshIdMappingCache();
+        }
+    }
+
+    private void refreshIdMappingCache() {
+        try {
+            RMapCache<String, String> idMap = redisson.getMapCache(Type.ID_MAPPING.getMapIdentifier(), StringCodec.INSTANCE);
+            idMappingCache = new HashMap<>(idMap.readAllMap());
+            LOG.info("ID mapping cache refreshed: {} entries", idMappingCache.size());
+        } catch (Exception e) {
+            LOG.error("Unable to refresh ID mapping cache from Redis, keeping previous one ({} entries)", idMappingCache.size(), e);
+        }
     }
 
     private void idMapping(String csvFilePath) {
@@ -259,6 +277,9 @@ public class RedisService {
     }
 
     public String readIdMap(Type type, String key) {
+        if (redisEnabled && Type.ID_MAPPING.equals(type)) {
+            return idMappingCache.get(key);
+        }
         if (redisEnabled) {
             RMapCache<String, String> idMap = redisson.getMapCache(type.getMapIdentifier(), StringCodec.INSTANCE);
 
