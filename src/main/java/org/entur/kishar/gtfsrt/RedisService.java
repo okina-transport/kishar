@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -52,7 +53,7 @@ public class RedisService {
         this.blobStoreService = blobStoreService;
 
         if (redisEnabled) {
-            LOG.info("redis url = " + host + ":" + port);
+            LOG.info("redis url = {}:{}", host, port);
             Config config = new Config();
             config.useReplicatedServers().addNodeAddress("redis://" + host + ":" + port);
 
@@ -64,6 +65,28 @@ public class RedisService {
         } else {
             redisson = null;
         }
+    }
+
+    /**
+     * TTL (in seconds) of a merged TripUpdate: time remaining until its latest arrival/departure,
+     * or the incoming TTL if greater. StopTimeUpdate times are absolute epoch seconds and must be
+     * converted to a duration relative to now.
+     */
+    static long computeMergedTripUpdateTimeToLive(GtfsRealtime.TripUpdate tripUpdate, long incomingTimeToLive, long nowEpochSeconds) {
+        long latestStopTime = Long.MIN_VALUE;
+        for (var stu : tripUpdate.getStopTimeUpdateList()) {
+            if (stu.hasArrival() && stu.getArrival().hasTime()) {
+                latestStopTime = max(latestStopTime, stu.getArrival().getTime());
+            }
+            if (stu.hasDeparture() && stu.getDeparture().hasTime()) {
+                latestStopTime = max(latestStopTime, stu.getDeparture().getTime());
+            }
+        }
+
+        if (latestStopTime == Long.MIN_VALUE) {
+            return incomingTimeToLive;
+        }
+        return max(latestStopTime - nowEpochSeconds, incomingTimeToLive);
     }
 
     public void resetAllData() {
@@ -169,18 +192,7 @@ public class RedisService {
                 mergedEntity.setTripUpdate(buildMergedTripUpdate(entity, incomingTripUpdate));
                 mergedEntity.setId(entity.getId());
 
-                List<Long> times = new ArrayList<>();
-
-                for (var stu : mergedEntity.getTripUpdate().getStopTimeUpdateList()) {
-                    if (stu.hasArrival() && stu.getArrival().hasTime()) {
-                        times.add(stu.getArrival().getTime());
-                    }
-                    if (stu.hasDeparture() && stu.getDeparture().hasTime()) {
-                        times.add(stu.getDeparture().getTime());
-                    }
-                }
-
-                timeToLive = max(times.stream().max(Long::compare).orElse(-1L), timeToLive);
+                timeToLive = computeMergedTripUpdateTimeToLive(mergedEntity.getTripUpdate(), timeToLive, Instant.now().getEpochSecond());
 
                 gtfsRtMap.put(key, mergedEntity.build().toByteArray(), timeToLive, TimeUnit.SECONDS);
             }
@@ -204,15 +216,16 @@ public class RedisService {
         mergedTripUpdate.setTimestamp(incomingEntity.getTripUpdate().getTimestamp() != 0 ? incomingEntity.getTripUpdate().getTimestamp() : existingEntity.getTripUpdate().getTimestamp());
 
         if (!existingEntity.getTripUpdate().getTrip().getTripId().equals(incomingEntity.getTripUpdate().getTrip().getTripId())) {
-            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getTripId() + " - " + incomingEntity.getTripUpdate().getTrip().getTripId());
+            LOG.debug("===>merging different trips - {} - {}", existingEntity.getTripUpdate().getTrip().getTripId(),
+                    incomingEntity.getTripUpdate().getTrip().getTripId());
         }
 
         if (!existingEntity.getTripUpdate().getTrip().getRouteId().equals(incomingEntity.getTripUpdate().getTrip().getRouteId())) {
-            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getTrip().getRouteId() + " - " + incomingEntity.getTripUpdate().getTrip().getRouteId());
+            LOG.debug("===>merging different trips - {} - {}", existingEntity.getTripUpdate().getTrip().getRouteId(), incomingEntity.getTripUpdate().getTrip().getRouteId());
         }
 
         if (!existingEntity.getTripUpdate().getVehicle().getId().equals(incomingEntity.getTripUpdate().getVehicle().getId())) {
-            LOG.debug("===>merging different trips - " + existingEntity.getTripUpdate().getVehicle().getId() + " - " + incomingEntity.getTripUpdate().getVehicle().getId());
+            LOG.debug("===>merging different trips - {} - {}", existingEntity.getTripUpdate().getVehicle().getId(), incomingEntity.getTripUpdate().getVehicle().getId());
         }
 
         List<String> alreadySeenStops = new ArrayList<>();
