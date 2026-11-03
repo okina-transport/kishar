@@ -227,7 +227,7 @@ public class SiriToGtfsRealtimeService {
     }
 
     public Object getVehiclePositionsForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
-        FeedMessage result = null;
+        FeedMessage result = GtfsRealtimeLibrary.createFeedMessageBuilder().build();
         for (String datasetId : datasets) {
             FeedMessage datasetTripUpdates = getVehiclePositionsForDataset(datasetId, useOriginalId);
             result = mergeFeedMessages(result, datasetTripUpdates);
@@ -267,7 +267,7 @@ public class SiriToGtfsRealtimeService {
     }
 
     public Object getAlertsForDatasets(String contentType, Set<String> datasets, boolean useOriginalId) {
-        FeedMessage result = null;
+        FeedMessage result = GtfsRealtimeLibrary.createFeedMessageBuilder().build();
         for (String datasetId : datasets) {
             FeedMessage datasetTripUpdates = getAlertsForDataset(datasetId, useOriginalId);
             result = mergeFeedMessages(result, datasetTripUpdates);

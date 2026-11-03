@@ -19,6 +19,37 @@ import static org.mockito.Mockito.when;
 class TestMergedVehiclePositions extends SiriToGtfsRealtimeServiceTest {
 
     @Test
+    void testVMEmptyDatasetsReturnsEmptyFeedMessageInJson() {
+        Object result = rtService.getVehiclePositionsForDatasets("application/json", java.util.Collections.emptySet(), true);
+
+        assertNotNull(result);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, result);
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) result;
+        assertEquals(0, feedMessage.getEntityCount());
+        assertTrue(feedMessage.hasHeader());
+    }
+
+    @Test
+    void testVMEmptyDatasetsReturnsEmptyFeedMessageInProtobuf() throws Exception {
+        Object result = rtService.getVehiclePositionsForDatasets("application/x-protobuf", java.util.Collections.emptySet(), true);
+
+        assertNotNull(result);
+        assertInstanceOf(byte[].class, result);
+        GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) result);
+        assertEquals(0, feedMessage.getEntityCount());
+        assertTrue(feedMessage.hasHeader());
+    }
+
+    @Test
+    void testVMAllDatasetsWithEmptyCacheReturnsEmptyFeedMessage() {
+        Object result = rtService.getVehiclePositionsForAllDatasets("application/json", true);
+
+        assertNotNull(result);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, result);
+        assertEquals(0, ((GtfsRealtime.FeedMessage) result).getEntityCount());
+    }
+
+    @Test
     void testVMMergedDatasets() {
 
         String lineRefValue = "TST:Line:1234";
