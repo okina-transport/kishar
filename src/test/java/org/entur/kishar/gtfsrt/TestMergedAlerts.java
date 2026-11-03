@@ -24,6 +24,37 @@ import static org.mockito.Mockito.when;
 class TestMergedAlerts extends SiriToGtfsRealtimeServiceTest {
 
     @Test
+    void testSXEmptyDatasetsReturnsEmptyFeedMessageInJson() {
+        Object result = rtService.getAlertsForDatasets("application/json", java.util.Collections.emptySet(), true);
+
+        assertNotNull(result);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, result);
+        GtfsRealtime.FeedMessage feedMessage = (GtfsRealtime.FeedMessage) result;
+        assertEquals(0, feedMessage.getEntityCount());
+        assertTrue(feedMessage.hasHeader());
+    }
+
+    @Test
+    void testSXEmptyDatasetsReturnsEmptyFeedMessageInProtobuf() throws Exception {
+        Object result = rtService.getAlertsForDatasets("application/x-protobuf", java.util.Collections.emptySet(), true);
+
+        assertNotNull(result);
+        assertInstanceOf(byte[].class, result);
+        GtfsRealtime.FeedMessage feedMessage = GtfsRealtime.FeedMessage.parseFrom((byte[]) result);
+        assertEquals(0, feedMessage.getEntityCount());
+        assertTrue(feedMessage.hasHeader());
+    }
+
+    @Test
+    void testSXAllDatasetsWithEmptyCacheReturnsEmptyFeedMessage() {
+        Object result = rtService.getAlertsForAllDatasets("application/json", true);
+
+        assertNotNull(result);
+        assertInstanceOf(GtfsRealtime.FeedMessage.class, result);
+        assertEquals(0, ((GtfsRealtime.FeedMessage) result).getEntityCount());
+    }
+
+    @Test
     void testMergedDatasets() throws IOException {
         String datasetId1 = "DAT1";
         String datasetId2 = "DAT2";
